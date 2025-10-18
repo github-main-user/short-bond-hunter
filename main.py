@@ -4,8 +4,9 @@ import time
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from market.utils import filter_bonds
 from src.market.services import fetch_bonds, update_market_data
+from src.market.utils import filter_bonds
+from src.telegram.services import send_telegram_message
 
 
 def main() -> None:
@@ -20,14 +21,15 @@ def main() -> None:
 
     for bond in bonds:
         if bond.market_data and bond.market_data.annual_yield >= 20:
-            pass
+            message = f"Bond {bond.ticker} has annual yeild more then 20%"
+            send_telegram_message(message)
 
 
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
 
     trigger = CronTrigger(
-        day_of_week="mon-fri",
+        day_of_week="mon-sat",
         hour="10-18",
         minute="*/15",
         timezone="UTC",
