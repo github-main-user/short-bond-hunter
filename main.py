@@ -17,7 +17,10 @@ def main() -> None:
     print(f"{len(bonds)} bonds left after filtration")
 
     for bond in bonds:
-        update_market_data(fee_percent=0.05, bond=bond)
+        try:
+            update_market_data(fee_percent=0.05, bond=bond)
+        except Exception as e:
+            print(f"Got an exception: {e}")
 
     for bond in bonds:
         if bond.market_data and bond.market_data.annual_yield >= 20:

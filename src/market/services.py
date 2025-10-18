@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from tinkoff.invest import Client
 
@@ -18,7 +18,7 @@ def update_market_data(fee_percent: float, bond: NBond) -> None:
     market_data = MarketData()
     market_data.fee_percent = fee_percent
 
-    now = datetime.now()
+    now = datetime.now(tz=timezone.utc)
     with Client(settings.TINVEST_TOKEN) as client:
         coupon_resp = client.instruments.get_bond_coupons(
             figi=bond.figi,

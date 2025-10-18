@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from tinkoff.invest import MoneyValue, Quotation
 from tinkoff.invest.schemas import RiskLevel
@@ -11,7 +11,7 @@ def normalize_quotation(money: MoneyValue | Quotation) -> float:
 
 
 def filter_bonds(bonds: list[NBond], maximum_days: int) -> list[NBond]:
-    from_date = datetime.now()
+    from_date = datetime.now(tz=timezone.utc)
     to_date = from_date + timedelta(days=maximum_days)
 
     return [
