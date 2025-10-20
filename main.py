@@ -39,10 +39,13 @@ if __name__ == "__main__":
     )
 
     scheduler.add_job(main, trigger)
+
+    print("Starting scheduler")
     scheduler.start()
 
     try:
         while True:
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
+        print("Stopping scheduler")
         scheduler.shutdown()
