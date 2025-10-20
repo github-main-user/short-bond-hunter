@@ -35,7 +35,7 @@ if __name__ == "__main__":
         day_of_week="mon-sat",
         hour="10-18",
         minute="*/15",
-        timezone="UTC",
+        timezone=ZoneInfo("Europe/Moscow"),
     )
 
     scheduler.add_job(main, trigger)
