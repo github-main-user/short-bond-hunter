@@ -1,7 +1,13 @@
 import logging
 
 from .config import settings
-from .market.services import fetch_bonds, update_market_data
+from .market.services import (
+    buy_bond,
+    fetch_bonds,
+    get_account_balance,
+    get_account_id,
+    update_market_data,
+)
 from .market.utils import filter_bonds
 from .telegram.services import send_telegram_message
 
@@ -36,8 +42,28 @@ def logic() -> None:
             <= bond.market_data.annual_yield
             <= settings.ANNUAL_YIELD_MAX
         ):
-            message = f"Bond `{bond.ticker}` has annual yeild {bond.market_data.annual_yield:.2f}%"
-            logger.info(message)
-            send_telegram_message(message)
+            logger.info(
+                f"Trying to buy bond: `%s` (%s%%) (%s bonds for current: %s₽ + real: %s₽)",
+                bond.ticker,
+                format(bond.market_data.annual_yield, ".2f"),
+                bond.market_data.ask_quantity,
+                format(bond.market_data.current_price, ".2f"),
+                format(bond.market_data.real_price, ".2f"),
+            )
+            account_id = get_account_id()
+            balance = get_account_balance(account_id)
+            try:
+                if balance >= bond.market_data.real_price:
+                    buy_price = buy_bond(account_id, bond, 1)
+
+                    message = f"Bought 1 {bond.ticker} for {buy_price + bond.market_data.fee:.2f}₽"
+                    logger.info(message)
+                else:
+                    message = f"Cannot buy {bond.ticker} - Not enought balance"
+                    logger.warning(message)
+
+                send_telegram_message(message)
+            except Exception as e:
+                logger.error("Error ocured during order post %s", e)
 
     logger.info("Maximum annual yield: %s%%", format(max_annual_yield, ".2f"))
