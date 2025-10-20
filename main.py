@@ -18,7 +18,7 @@ if __name__ == "__main__":
     trigger = CronTrigger(
         day_of_week="mon-sat",
         hour="10-18",
-        minute="*/15",
+        minute="*/5",
         timezone=ZoneInfo("Europe/Moscow"),
     )
 
