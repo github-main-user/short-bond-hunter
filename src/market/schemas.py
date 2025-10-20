@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Self
 
 from pydantic import BaseModel
@@ -33,7 +33,11 @@ class NBond(BaseModel):
     trading_status: int
     market_data: MarketData | None = None
 
-    @classmethod
+    @property
+    def days_to_maturity(self) -> int:
+        return (self.maturity_date - datetime.now(tz=timezone.utc)).days
+
+    @classmethod  # type: ignore
     def from_bond(cls, bond: Bond) -> Self:
         """Factory method to create NBond from Tinkoff Bond."""
         return cls(
