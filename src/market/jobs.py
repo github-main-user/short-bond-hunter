@@ -1,7 +1,7 @@
 import logging
 
-from .config import settings
-from .market.services import (
+from src.config import settings
+from src.market.services import (
     buy_bond,
     fetch_bonds,
     get_account_balance,
@@ -9,21 +9,28 @@ from .market.services import (
     get_existing_bonds,
     update_market_data,
 )
-from .market.utils import filter_bonds, normalize_quotation
-from .telegram.services import send_telegram_message
+from src.market.utils import filter_bonds, normalize_quotation
+from src.telegram.services import send_telegram_message
 
 logger = logging.getLogger(__name__)
 
+BONDS = []
 
-def logic() -> None:
+
+def update_bonds() -> None:
+    global BONDS
     bonds = fetch_bonds()
     logger.info("Got %s bonds", len(bonds))
 
     bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
     logger.info("%s bonds left after filtration", len(bonds))
 
+    BONDS = bonds
+
+
+def trading_logic() -> None:
     max_annual_yield = 0
-    for bond in bonds:
+    for bond in BONDS:
         logger.info("Processing bond: %s", bond.ticker)
 
         try:
@@ -95,8 +102,11 @@ def logic() -> None:
                 else:
                     real_buy_price = buy_price + bond.market_data.fee
                     message = (
-                        f"Bought {quantity_to_buy} of {bond.ticker} "
-                        f"(expected: {bond.market_data.real_price:.2f}₽, real: {real_buy_price:.2f}₽)"
+                        f"Bought {quantity_to_buy} of {bond.ticker} ({bond.market_data.annual_yield:.2f}%)\n"
+                        f"Available: {bond.market_data.ask_quantity}\n"
+                        f"Expected price: {bond.market_data.real_price * quantity_to_buy:.2f}₽\n"
+                        f"Actual price: {real_buy_price:.2f}₽\n"
+                        f"Benefit: {bond.market_data.benefit:.2f}₽ in {bond.days_to_maturity} days ({bond.market_data.benefit / bond.days_to_maturity:.2f}₽ per day)"
                     )
                     logger.info(message)
                     send_telegram_message(message)
