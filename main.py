@@ -23,13 +23,10 @@ if __name__ == "__main__":
     )
 
     scheduler.add_job(logic, trigger)
-
-    logging.info("Starting scheduler")
     scheduler.start()
 
     try:
         while True:
             time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
-        logging.info("Stopping scheduler")
         scheduler.shutdown()
