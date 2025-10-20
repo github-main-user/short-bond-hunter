@@ -15,6 +15,8 @@ def logic() -> None:
     bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
     logger.info("%s bonds left after filtration", len(bonds))
 
+    max_annual_yield = 0
+
     for bond in bonds:
         logger.info("Processing bond: %s", bond.ticker)
 
@@ -27,11 +29,15 @@ def logic() -> None:
             logger.info("Skipped bond: %s - No market data", bond.ticker)
             continue
 
+        max_annual_yield = max(max_annual_yield, bond.market_data.annual_yield)
+
         if (
             settings.ANNUAL_YIELD_MIN
             <= bond.market_data.annual_yield
             <= settings.ANNUAL_YIELD_MAX
         ):
-            message = f"Bond `{bond.ticker}` has annual yeild {bond.market_data.annual_yield}%"
+            message = f"Bond `{bond.ticker}` has annual yeild {bond.market_data.annual_yield:.2f}%"
             logger.info(message)
             send_telegram_message(message)
+
+    logger.info("Maximum annual yield: %s%%", format(max_annual_yield, ".2f"))
