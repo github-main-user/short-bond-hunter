@@ -16,15 +16,15 @@ def logic() -> None:
     logger.info("%s bonds left after filtration", len(bonds))
 
     for bond in bonds:
-        logging.info("Processing bond: %s", bond.ticker)
+        logger.info("Processing bond: %s", bond.ticker)
 
         try:
             update_market_data(fee_percent=settings.FEE_PERCENT, bond=bond)
         except Exception as e:
-            logger.error(f"Got an exception: %s", e)
+            logger.error("Got an exception: %s", e)
 
         if not bond.market_data:
-            logging.info("Skipped bond: %s - No market data", bond.ticker)
+            logger.info("Skipped bond: %s - No market data", bond.ticker)
             continue
 
         if (
@@ -33,5 +33,5 @@ def logic() -> None:
             <= settings.ANNUAL_YIELD_MAX
         ):
             message = f"Bond `{bond.ticker}` has annual yeild {bond.market_data.annual_yield}%"
-            logging.info(message)
+            logger.info(message)
             send_telegram_message(message)
