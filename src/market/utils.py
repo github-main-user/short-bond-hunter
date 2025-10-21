@@ -1,7 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from tinkoff.invest import MoneyValue, Quotation
 from tinkoff.invest.schemas import RiskLevel
 
-from src.market.schemas import NBond
+if TYPE_CHECKING:
+    from src.market.schemas import NBond
 
 
 def normalize_quotation(money: MoneyValue | Quotation) -> float:
