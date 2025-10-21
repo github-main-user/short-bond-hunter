@@ -18,6 +18,10 @@ def filter_bonds(bonds: list[NBond], maximum_days: int) -> list[NBond]:
             and bond.currency == "rub"
             and bond.nominal_currency == "rub"
             and bond.days_to_maturity <= maximum_days
-            and bond.risk_level < RiskLevel.RISK_LEVEL_HIGH
+            and (
+                RiskLevel.RISK_LEVEL_UNSPECIFIED
+                < bond.risk_level
+                < RiskLevel.RISK_LEVEL_HIGH
+            )
         )
     ]
