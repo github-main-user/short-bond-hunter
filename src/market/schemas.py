@@ -47,7 +47,7 @@ class NBond:
 
     @property
     def days_to_maturity(self) -> int:
-        return (self.maturity_date - datetime.now(tz=timezone.utc)).days
+        return (self.maturity_date.date() - datetime.now(tz=timezone.utc).date()).days
 
     @cached_property
     def coupons_sum(self) -> float:
@@ -94,11 +94,12 @@ class NBond:
 
     @property
     def annual_yield(self) -> float:
-        return (
-            (self.benefit / self.real_price)
-            * (365.25 / max(self.days_to_maturity, 1))
-            * 100
-        )
+        days = self.days_to_maturity
+
+        if days <= 0:
+            return 0.0
+
+        return (self.benefit / self.real_price) * (365.25 / days) * 100
 
     @property
     def orderbook(self) -> OrderBook:
