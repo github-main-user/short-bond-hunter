@@ -5,6 +5,7 @@ from tinkoff.invest import (
     Client,
     MarketDataRequest,
     OrderBookInstrument,
+    RequestError,
     SubscribeOrderBookRequest,
     SubscriptionAction,
 )
@@ -133,29 +134,32 @@ def run_streaming_logic():
         logger.info(f"Subscribed to {len(bonds)} bonds")
 
         last_update_time = time.time()
-        with Client(settings.TINVEST_TOKEN) as client:
-            for marketdata in client.market_data_stream.market_data_stream(
-                request_iterator()
-            ):
-                if time.time() - last_update_time > update_interval_seconds:
-                    logger.info("Bonds update interval reached. Re-fetching...")
-                    break
+        try:
+            with Client(settings.TINVEST_TOKEN) as client:
+                for marketdata in client.market_data_stream.market_data_stream(
+                    request_iterator()
+                ):
+                    if time.time() - last_update_time > update_interval_seconds:
+                        logger.info("Bonds update interval reached. Re-fetching...")
+                        break
 
-                if not marketdata.orderbook:
-                    logger.info("Skipping marketdata - Got no orderbook")
-                    continue
+                    if not marketdata.orderbook:
+                        logger.info("Skipping marketdata - Got no orderbook")
+                        continue
 
-                bond = figi_to_bond_map.get(marketdata.orderbook.figi)
-                if not bond:
-                    logger.debug(
-                        "Skipping update for bond not in the list: %s",
-                        marketdata.orderbook.figi,
-                    )
-                    continue
+                    bond = figi_to_bond_map.get(marketdata.orderbook.figi)
+                    if not bond:
+                        logger.debug(
+                            "Skipping update for bond not in the list: %s",
+                            marketdata.orderbook.figi,
+                        )
+                        continue
 
-                old_price = bond.real_price
-                bond.orderbook = marketdata.orderbook
+                    old_price = bond.real_price
+                    bond.orderbook = marketdata.orderbook
 
-                # if price changed
-                if old_price != bond.real_price:
-                    trading_logic(bond)
+                    # if price changed
+                    if old_price != bond.real_price:
+                        trading_logic(bond)
+        except RequestError as e:
+            logging.error("Error during market data stream: %s", e)
