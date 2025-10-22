@@ -88,7 +88,7 @@ def trading_logic(bond: NBond) -> None:
         else:
             real_buy_price = buy_price + bond.fee
             message = (
-                f"Bought {quantity_to_buy} of {bond.ticker} ({bond.annual_yield:.2f}%)\n"
+                f"Bought {quantity_to_buy} of `{bond.ticker}` ({bond.annual_yield:.2f}%)\n"
                 f"Available: {bond.ask_quantity}\n"
                 f"Expected price: {bond.real_price * quantity_to_buy:.2f}₽\n"
                 f"Actual price: {real_buy_price:.2f}₽\n"
