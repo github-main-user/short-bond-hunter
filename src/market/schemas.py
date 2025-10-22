@@ -24,10 +24,13 @@ class NBond:
     for_qual_investor: bool
     trading_status: int
     fee_percent: float
+    coupons_sum: float
     _orderbook: OrderBook
 
     @classmethod  # type: ignore
-    def from_bond(cls, bond: Bond, fee_percent: float) -> Self:
+    def from_bond(
+        cls, bond: Bond, fee_percent: float, coupons_sum: float, orderbook: OrderBook
+    ) -> Self:
         """Factory method to create NBond from Tinkoff Bond."""
         return cls(
             figi=bond.figi,
@@ -42,23 +45,13 @@ class NBond:
             for_qual_investor=bond.for_qual_investor_flag,
             trading_status=bond.trading_status,
             fee_percent=fee_percent,
-            _orderbook=OrderBook(figi=bond.figi, asks=[]),
+            coupons_sum=coupons_sum,
+            _orderbook=orderbook,
         )
 
     @property
     def days_to_maturity(self) -> int:
         return (self.maturity_date.date() - datetime.now(tz=timezone.utc).date()).days
-
-    @cached_property
-    def coupons_sum(self) -> float:
-        now = datetime.now(tz=timezone.utc)
-        with Client(settings.TINVEST_TOKEN) as client:
-            coupon_resp = client.instruments.get_bond_coupons(
-                figi=self.figi,
-                from_=now,
-                to=self.maturity_date,
-            )
-            return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
 
     @property
     def ask_quantity(self) -> int:

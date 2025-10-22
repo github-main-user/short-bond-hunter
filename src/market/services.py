@@ -1,7 +1,9 @@
 import logging
+from datetime import datetime, timezone
 
 from tinkoff.invest import (
     Client,
+    OrderBook,
     OrderDirection,
     OrderType,
     PortfolioPosition,
@@ -49,9 +51,26 @@ def buy_bond(account_id: str, bond: NBond, quantity: int):
         return normalize_quotation(response.total_order_amount)
 
 
+def fetch_coupons_sum(figi: str, maturity_date: datetime) -> float:
+    now = datetime.now(tz=timezone.utc)
+    with Client(settings.TINVEST_TOKEN) as client:
+        coupon_resp = client.instruments.get_bond_coupons(
+            figi=figi,
+            from_=now,
+            to=maturity_date,
+        )
+        return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
+
+
 def fetch_bonds() -> list[NBond]:
     with Client(settings.TINVEST_TOKEN) as client:
         response = client.instruments.bonds()
         return [
-            NBond.from_bond(bond, settings.FEE_PERCENT) for bond in response.instruments
+            NBond.from_bond(
+                bond,
+                fee_percent=settings.FEE_PERCENT,
+                coupons_sum=fetch_coupons_sum(bond.figi, bond.maturity_date),
+                orderbook=OrderBook(figi=bond.figi, asks=[]),
+            )
+            for bond in response.instruments
         ]

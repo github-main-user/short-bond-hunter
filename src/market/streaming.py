@@ -103,38 +103,54 @@ def trading_logic(bond: NBond) -> None:
 
 
 def run_streaming_logic():
-    bonds = fetch_bonds()
-    logger.info("Got %s bonds", len(bonds))
+    update_interval_seconds = 60 * 60  # 1 hour
 
-    bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
-    logger.info("%s bonds left after filtration", len(bonds))
+    while True:
+        bonds = fetch_bonds()
+        logger.info("Got %s bonds", len(bonds))
 
-    figi_to_bond_map = {b.figi: b for b in bonds}
+        bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
+        logger.info("%s bonds left after filtration", len(bonds))
 
-    def request_iterator():
-        yield MarketDataRequest(
-            subscribe_order_book_request=SubscribeOrderBookRequest(
-                subscription_action=SubscriptionAction.SUBSCRIPTION_ACTION_SUBSCRIBE,
-                instruments=[OrderBookInstrument(figi=b.figi, depth=1) for b in bonds],
+        figi_to_bond_map = {b.figi: b for b in bonds}
+
+        def request_iterator():
+            yield MarketDataRequest(
+                subscribe_order_book_request=SubscribeOrderBookRequest(
+                    subscription_action=SubscriptionAction.SUBSCRIPTION_ACTION_SUBSCRIBE,
+                    instruments=[
+                        OrderBookInstrument(figi=b.figi, depth=1) for b in bonds
+                    ],
+                )
             )
-        )
-        while True:
-            time.sleep(1)
+            while True:
+                time.sleep(1)
 
-    logger.info(f"Subscribed to {len(bonds)} bonds")
-    with Client(settings.TINVEST_TOKEN) as client:
-        for marketdata in client.market_data_stream.market_data_stream(
-            request_iterator()
-        ):
-            if not marketdata.orderbook:
-                logger.info("Skipping marketdata - Got no orderbook")
-                continue
+        logger.info(f"Subscribed to {len(bonds)} bonds")
+        last_update_time = time.time()
+        with Client(settings.TINVEST_TOKEN) as client:
+            for marketdata in client.market_data_stream.market_data_stream(
+                request_iterator()
+            ):
+                if time.time() - last_update_time > update_interval_seconds:
+                    logger.info("Bonds update interval reached. Re-fetching...")
+                    break
 
-            bond = figi_to_bond_map[marketdata.orderbook.figi]
+                if not marketdata.orderbook:
+                    logger.info("Skipping marketdata - Got no orderbook")
+                    continue
 
-            old_price = bond.real_price
-            bond.orderbook = marketdata.orderbook
+                bond = figi_to_bond_map.get(marketdata.orderbook.figi)
+                if not bond:
+                    logger.debug(
+                        "Skipping update for bond not in the list: %s",
+                        marketdata.orderbook.figi,
+                    )
+                    continue
 
-            # if price changed
-            if old_price != bond.real_price:
-                trading_logic(bond)
+                old_price = bond.real_price
+                bond.orderbook = marketdata.orderbook
+
+                # if price changed
+                if old_price != bond.real_price:
+                    trading_logic(bond)
