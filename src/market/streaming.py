@@ -14,6 +14,7 @@ from src.market.schemas import NBond
 from src.market.services import (
     buy_bond,
     fetch_bonds,
+    fetch_coupons_sum,
     get_account_balance,
     get_account_id,
     get_existing_bonds,
@@ -112,6 +113,9 @@ def run_streaming_logic():
         bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
         logger.info("%s bonds left after filtration", len(bonds))
 
+        for bond in bonds:
+            bond.coupons_sum = fetch_coupons_sum(bond)
+
         figi_to_bond_map = {b.figi: b for b in bonds}
 
         def request_iterator():
@@ -127,6 +131,7 @@ def run_streaming_logic():
                 time.sleep(1)
 
         logger.info(f"Subscribed to {len(bonds)} bonds")
+
         last_update_time = time.time()
         with Client(settings.TINVEST_TOKEN) as client:
             for marketdata in client.market_data_stream.market_data_stream(

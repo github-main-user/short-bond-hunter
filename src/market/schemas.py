@@ -24,13 +24,11 @@ class NBond:
     for_qual_investor: bool
     trading_status: int
     fee_percent: float
-    coupons_sum: float
+    _coupons_sum: float
     _orderbook: OrderBook
 
     @classmethod  # type: ignore
-    def from_bond(
-        cls, bond: Bond, fee_percent: float, coupons_sum: float, orderbook: OrderBook
-    ) -> Self:
+    def from_bond(cls, bond: Bond, fee_percent: float, orderbook: OrderBook) -> Self:
         """Factory method to create NBond from Tinkoff Bond."""
         return cls(
             figi=bond.figi,
@@ -45,7 +43,7 @@ class NBond:
             for_qual_investor=bond.for_qual_investor_flag,
             trading_status=bond.trading_status,
             fee_percent=fee_percent,
-            coupons_sum=coupons_sum,
+            _coupons_sum=0.0,
             _orderbook=orderbook,
         )
 
@@ -101,3 +99,11 @@ class NBond:
     @orderbook.setter
     def orderbook(self, orderbook: OrderBook) -> None:
         self._orderbook = orderbook
+
+    @property
+    def coupons_sum(self) -> float:
+        return self._coupons_sum
+
+    @coupons_sum.setter
+    def coupons_sum(self, coupons_sum: float) -> None:
+        self._coupons_sum = coupons_sum
