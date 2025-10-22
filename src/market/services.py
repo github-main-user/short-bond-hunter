@@ -52,4 +52,6 @@ def buy_bond(account_id: str, bond: NBond, quantity: int):
 def fetch_bonds() -> list[NBond]:
     with Client(settings.TINVEST_TOKEN) as client:
         response = client.instruments.bonds()
-        return [NBond.from_bond(bond) for bond in response.instruments]
+        return [
+            NBond.from_bond(bond, settings.FEE_PERCENT) for bond in response.instruments
+        ]

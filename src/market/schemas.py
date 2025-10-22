@@ -1,8 +1,8 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import cached_property
 from typing import Self
 
-from pydantic import BaseModel
 from tinkoff.invest import Bond, Client, OrderBook
 
 from src.config import settings
@@ -10,18 +10,8 @@ from src.config import settings
 from .utils import normalize_quotation
 
 
-class MarketData(BaseModel):
-    fee_percent: float = 0.0
-    current_price: float = 0.0
-    fee: float = 0.0
-    real_price: float = 0.0
-    full_return: float = 0.0
-    benefit: float = 0.0
-    annual_yield: float = 0.0
-    ask_quantity: int = 0
-
-
-class NBond(BaseModel):
+@dataclass
+class NBond:
     figi: str
     ticker: str
     nominal: float
@@ -33,10 +23,11 @@ class NBond(BaseModel):
     nominal_currency: str
     for_qual_investor: bool
     trading_status: int
-    market_data: MarketData | None = None
+    fee_percent: float
+    _orderbook: OrderBook
 
     @classmethod  # type: ignore
-    def from_bond(cls, bond: Bond) -> Self:
+    def from_bond(cls, bond: Bond, fee_percent: float) -> Self:
         """Factory method to create NBond from Tinkoff Bond."""
         return cls(
             figi=bond.figi,
@@ -50,6 +41,8 @@ class NBond(BaseModel):
             nominal_currency=bond.nominal.currency,
             for_qual_investor=bond.for_qual_investor_flag,
             trading_status=bond.trading_status,
+            fee_percent=fee_percent,
+            _orderbook=OrderBook(figi=bond.figi, asks=[]),
         )
 
     @property
@@ -67,31 +60,50 @@ class NBond(BaseModel):
             )
             return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
 
-    def update_market_data(self, orderbook: OrderBook, fee_percent: float) -> None:
-        market_data = MarketData()
-        market_data.fee_percent = fee_percent
+    @property
+    def ask_quantity(self) -> int:
+        return self.orderbook.asks[0].quantity if self.orderbook.asks else 0
 
-        # normalize price from % to absolute value
-        ask_price_percent = normalize_quotation(orderbook.asks[0].price)
-        market_data.ask_quantity = orderbook.asks[0].quantity
-        market_data.current_price = (self.nominal * ask_price_percent) / 100
-
-        # calculate fee and real price including accrued coupon interest and fee
-        market_data.fee = market_data.current_price * (market_data.fee_percent / 100)
-        market_data.real_price = (
-            market_data.current_price + self.aci_value + market_data.fee
+    @property
+    def ask_price_percent(self) -> float:
+        return (
+            normalize_quotation(self.orderbook.asks[0].price)
+            if self.orderbook.asks
+            else 0
         )
 
-        # calculate total expected return (nominal + coupons)
-        market_data.full_return = self.nominal + self.coupons_sum
+    @property
+    def current_price(self) -> float:
+        return (self.nominal * self.ask_price_percent) / 100
 
-        market_data.benefit = market_data.full_return - market_data.real_price
+    @property
+    def fee(self) -> float:
+        return self.current_price * (self.fee_percent / 100)
 
-        # annualized yield as percentage
-        market_data.annual_yield = (
-            (market_data.benefit / market_data.real_price)
+    @property
+    def real_price(self) -> float:
+        return self.current_price + self.aci_value + self.fee
+
+    @property
+    def full_return(self) -> float:
+        return self.nominal + self.coupons_sum
+
+    @property
+    def benefit(self) -> float:
+        return self.full_return - self.real_price
+
+    @property
+    def annual_yield(self) -> float:
+        return (
+            (self.benefit / self.real_price)
             * (365.25 / max(self.days_to_maturity, 1))
             * 100
         )
 
-        self.market_data = market_data
+    @property
+    def orderbook(self) -> OrderBook:
+        return self._orderbook
+
+    @orderbook.setter
+    def orderbook(self, orderbook: OrderBook) -> None:
+        self._orderbook = orderbook
