@@ -52,13 +52,15 @@ def buy_bond(account_id: str, bond: NBond, quantity: int):
 
 
 def fetch_coupons_sum(figi: str, maturity_date: datetime) -> float:
-    now = datetime.now(tz=timezone.utc)
+    from_ = datetime.now(tz=timezone.utc)
+    to = maturity_date
+
+    if to < from_:
+        logging.warning("Skipping coupons fetching - `to` can't be less then `from`")
+        return 0.0
+
     with Client(settings.TINVEST_TOKEN) as client:
-        coupon_resp = client.instruments.get_bond_coupons(
-            figi=figi,
-            from_=now,
-            to=maturity_date,
-        )
+        coupon_resp = client.instruments.get_bond_coupons(figi=figi, from_=from_, to=to)
         return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
 
 
