@@ -69,7 +69,7 @@ class NBond:
 
     @property
     def fee(self) -> float:
-        return self.current_price * (self.fee_percent / 100)
+        return (self.current_price + self.aci_value) * (self.fee_percent / 100)
 
     @property
     def real_price(self) -> float:
