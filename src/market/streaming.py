@@ -102,7 +102,16 @@ def process_bond_for_purchase(client: Services, bond: NBond) -> None:
     Processes a bond for purchase, including eligibility checks, quantity calculation,
     and execution.
     """
-    logger.info("Processing bond: %s", bond.ticker)
+    logger.info(
+        "Processing bond: %s (%sd, %s%%) (%s₽ + %s₽ + %s₽ = %s₽)",
+        bond.ticker,
+        bond.days_to_maturity,
+        format(bond.annual_yield, ".2f"),
+        format(bond.current_price, ".2f"),
+        format(bond.aci_value, ".2f"),
+        format(bond.fee, ".2f"),
+        format(bond.real_price, ".2f"),
+    )
 
     if not is_bond_eligible_for_purchase(bond):
         return
