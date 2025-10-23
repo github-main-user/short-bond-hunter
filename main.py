@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import logging
 
-from src.market.streaming import run_streaming_logic
+from src.market.streaming import start_market_streaming_session
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -14,7 +14,11 @@ logging.basicConfig(
 )
 
 if __name__ == "__main__":
+    logging.info("Starting market streaming session")
+
     try:
-        run_streaming_logic()
+        start_market_streaming_session()
     except KeyboardInterrupt:
         pass
+
+    logging.info("Ending market streaming session")
