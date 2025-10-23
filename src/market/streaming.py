@@ -9,6 +9,7 @@ from tinkoff.invest import (
     SubscribeOrderBookRequest,
     SubscriptionAction,
 )
+from tinkoff.invest.services import Services
 
 from src.config import settings
 from src.market.schemas import NBond
@@ -49,12 +50,12 @@ def is_bond_eligible_for_purchase(bond: NBond) -> bool:
     return True
 
 
-def calculate_purchase_quantity(bond: NBond, account_id: str) -> int:
+def calculate_purchase_quantity(client: Services, bond: NBond, account_id: str) -> int:
     """
     Calculates the quantity of a bond to purchase.
     """
-    balance = get_account_balance(account_id)
-    existing_bond = get_existing_bonds(account_id).get(bond.ticker)
+    balance = get_account_balance(client, account_id)
+    existing_bond = get_existing_bonds(client, account_id).get(bond.ticker)
 
     quantity_to_buy_single = int(settings.BOND_SUM_MAX_SINGLE // bond.real_price)
 
@@ -96,7 +97,7 @@ def _format_purchase_notification(
     )
 
 
-def process_bond_for_purchase(bond: NBond) -> None:
+def process_bond_for_purchase(client: Services, bond: NBond) -> None:
     """
     Processes a bond for purchase, including eligibility checks, quantity calculation,
     and execution.
@@ -106,12 +107,12 @@ def process_bond_for_purchase(bond: NBond) -> None:
     if not is_bond_eligible_for_purchase(bond):
         return
 
-    account_id = get_account_id()
-    quantity_to_buy = calculate_purchase_quantity(bond, account_id)
+    account_id = get_account_id(client)
+    quantity_to_buy = calculate_purchase_quantity(client, bond, account_id)
 
     if quantity_to_buy > 0:
         try:
-            buy_price = buy_bond(account_id, bond, quantity_to_buy)
+            buy_price = buy_bond(client, account_id, bond, quantity_to_buy)
         except Exception as e:
             logger.error("An error occurred while buying the bond: %s", e)
         else:
@@ -131,23 +132,23 @@ BOND_REFRESH_INTERVAL_HOURS = 2
 BOND_REFRESH_INTERVAL_SECONDS = (60 * 60) * BOND_REFRESH_INTERVAL_HOURS
 
 
-def get_tradable_bonds() -> list[NBond]:
+def get_tradable_bonds(client: Services) -> list[NBond]:
     """
     Fetches and prepares a list of tradable bonds.
     """
-    bonds = fetch_bonds()
+    bonds = fetch_bonds(client)
     logger.info("Got %s bonds", len(bonds))
 
     bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
     logger.info("%s bonds left after filtration", len(bonds))
 
     for bond in bonds:
-        bond.coupons_sum = fetch_coupons_sum(bond)
+        bond.coupons_sum = fetch_coupons_sum(client, bond)
 
     return bonds
 
 
-def _handle_market_data_stream(bonds: list[NBond]) -> None:
+def _handle_market_data_stream(client: Services, bonds: list[NBond]) -> None:
     """
     Handles the market data stream for a list of bonds.
     """
@@ -167,32 +168,31 @@ def _handle_market_data_stream(bonds: list[NBond]) -> None:
 
     last_update_time = time.time()
     try:
-        with Client(settings.TINVEST_TOKEN) as client:
-            for marketdata in client.market_data_stream.market_data_stream(
-                request_iterator()
-            ):
-                if time.time() - last_update_time > BOND_REFRESH_INTERVAL_SECONDS:
-                    logger.info("Bonds update interval reached. Re-fetching...")
-                    break
+        for marketdata in client.market_data_stream.market_data_stream(
+            request_iterator()
+        ):
+            if time.time() - last_update_time > BOND_REFRESH_INTERVAL_SECONDS:
+                logger.info("Bonds update interval reached. Re-fetching...")
+                break
 
-                if not marketdata.orderbook:
-                    logger.info("Skipped marketdata - Got no orderbook")
-                    continue
+            if not marketdata.orderbook:
+                logger.info("Skipped marketdata - Got no orderbook")
+                continue
 
-                bond = figi_to_bond_map.get(marketdata.orderbook.figi)
-                if not bond:
-                    logger.debug(
-                        "Skipped update for bond %s (figi) - Not in the list",
-                        marketdata.orderbook.figi,
-                    )
-                    continue
+            bond = figi_to_bond_map.get(marketdata.orderbook.figi)
+            if not bond:
+                logger.debug(
+                    "Skipped update for bond %s (figi) - Not in the list",
+                    marketdata.orderbook.figi,
+                )
+                continue
 
-                old_price = bond.real_price
-                bond.orderbook = marketdata.orderbook
+            old_price = bond.real_price
+            bond.orderbook = marketdata.orderbook
 
-                # if price changed
-                if old_price != bond.real_price:
-                    process_bond_for_purchase(bond)
+            # if price changed
+            if old_price != bond.real_price:
+                process_bond_for_purchase(client, bond)
     except RequestError as e:
         logging.error("Error during market data stream: %s", e)
 
@@ -202,5 +202,6 @@ def start_market_streaming_session() -> None:
     Starts the main market streaming session.
     """
     while True:
-        bonds = get_tradable_bonds()
-        _handle_market_data_stream(bonds)
+        with Client(settings.TINVEST_TOKEN) as client:
+            bonds = get_tradable_bonds(client)
+            _handle_market_data_stream(client, bonds)
