@@ -1,11 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from functools import cached_property
 from typing import Self
 
-from tinkoff.invest import Bond, Client, OrderBook
-
-from src.config import settings
+from tinkoff.invest import Bond, OrderBook
 
 from .utils import normalize_quotation
 
