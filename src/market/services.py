@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from functools import lru_cache
 
 from tinkoff.invest import (
     OrderBook,
@@ -24,6 +25,7 @@ def get_existing_bonds(
     return {p.ticker: p for p in positions if p.instrument_type == "bond"}
 
 
+@lru_cache
 def get_account_id(client: Services) -> str:
     response = client.users.get_accounts()
     if not response.accounts:
