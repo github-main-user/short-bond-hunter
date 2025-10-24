@@ -10,10 +10,17 @@ if TYPE_CHECKING:
 
 
 def normalize_quotation(money: MoneyValue | Quotation) -> float:
+    """
+    Normalizes decimal values like Quotation or MoneyValue value to float.
+    """
     return money.units + (money.nano / 1e9)
 
 
 def filter_bonds(bonds: list[NBond], maximum_days: int) -> list[NBond]:
+    """
+    Filters given bonds by defined criteria.
+    Returns new list of bonds.
+    """
     return [
         bond
         for bond in bonds
@@ -30,3 +37,4 @@ def filter_bonds(bonds: list[NBond], maximum_days: int) -> list[NBond]:
             )
         )
     ]
+

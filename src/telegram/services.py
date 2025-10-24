@@ -24,6 +24,11 @@ def _escape_markdown_v2_special_chars(text: str) -> str:
 
 
 def send_telegram_message(message: str):
+    """
+    Sends message to telegram bot.
+    Requires telegram bot token and telegram chat id to be set in settings.
+    Raises exception for status.
+    """
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
     params = {
         "chat_id": settings.TELEGRAM_CHAT_ID,
@@ -31,4 +36,5 @@ def send_telegram_message(message: str):
         "parse_mode": "MarkdownV2",
     }
 
-    requests.post(url, params=params)
+    response = requests.post(url, params=params)
+    response.raise_for_status()

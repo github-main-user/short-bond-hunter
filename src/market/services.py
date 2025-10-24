@@ -18,15 +18,12 @@ from .schemas import NBond
 logger = logging.getLogger(__name__)
 
 
-def get_existing_bonds(
-    client: Services, account_id: str
-) -> dict[str, PortfolioPosition]:
-    positions = client.operations.get_portfolio(account_id=account_id).positions
-    return {p.ticker: p for p in positions if p.instrument_type == "bond"}
-
-
 @lru_cache
 def get_account_id(client: Services) -> str:
+    """
+    Fetches account id.
+    Caches the result using LRU cache.
+    """
     response = client.users.get_accounts()
     if not response.accounts:
         logger.error("There is no accounts")
@@ -34,13 +31,29 @@ def get_account_id(client: Services) -> str:
     return response.accounts[0].id
 
 
+def get_existing_bonds(
+    client: Services, account_id: str
+) -> dict[str, PortfolioPosition]:
+    """
+    Fetches existing on account bonds.
+    """
+    positions = client.operations.get_portfolio(account_id=account_id).positions
+    return {p.ticker: p for p in positions if p.instrument_type == "bond"}
+
+
 def get_account_balance(client: Services, account_id: str) -> float:
+    """
+    Fetches account balance.
+    """
     return normalize_quotation(
         client.operations.get_positions(account_id=account_id).money[0]
     )
 
 
 def buy_bond(client: Services, account_id: str, bond: NBond, quantity: int):
+    """
+    Posts market order to given bond by given quantity.
+    """
     response = client.orders.post_order(
         account_id=account_id,
         figi=bond.figi,
@@ -66,6 +79,9 @@ def fetch_coupons_sum(client: Services, bond: NBond) -> float:
 
 
 def fetch_bonds(client: Services) -> list[NBond]:
+    """
+    Fetches all available bonds on exchange.
+    """
     response = client.instruments.bonds()
     return [
         NBond.from_bond(

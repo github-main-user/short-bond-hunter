@@ -1,6 +1,7 @@
 import logging
 import time
 
+from requests.exceptions import HTTPError
 from tinkoff.invest import (
     Client,
     MarketDataRequest,
@@ -125,12 +126,17 @@ def process_bond_for_purchase(client: Services, bond: NBond) -> None:
         except Exception as e:
             logger.error("An error occurred while buying the bond: %s", e)
         else:
+            # calculating real_buy_price here, instead of using fee provided by api
+            # itself - because in provided by api field fee is always 0 by some reason.
             real_buy_price = buy_price + bond.fee
             message = _format_purchase_notification(
                 bond, quantity_to_buy, real_buy_price
             )
             logger.info(message)
-            send_telegram_message(message)
+            try:
+                send_telegram_message(message)
+            except HTTPError as e:
+                logger.error("An error occurred while sending telegram message: %s", e)
     else:
         logger.info(
             "Skipped bond %s: Calculated quantity is %s", bond.ticker, quantity_to_buy
@@ -203,7 +209,7 @@ def _handle_market_data_stream(client: Services, bonds: list[NBond]) -> None:
             if old_price != bond.real_price:
                 process_bond_for_purchase(client, bond)
     except RequestError as e:
-        logging.error("Error during market data stream: %s", e)
+        logger.error("Error during market data stream: %s", e)
 
 
 def start_market_streaming_session() -> None:

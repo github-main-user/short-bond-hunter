@@ -9,6 +9,11 @@ from .utils import normalize_quotation
 
 @dataclass
 class NBond:
+    """
+    A wrapper for T-Bank bond with normalized prices and convinient names.
+    Unnecessary fields are not included.
+    """
+
     figi: str
     ticker: str
     nominal: float
@@ -26,7 +31,9 @@ class NBond:
 
     @classmethod  # type: ignore
     def from_bond(cls, bond: Bond, fee_percent: float, orderbook: OrderBook) -> Self:
-        """Factory method to create NBond from Tinkoff Bond."""
+        """
+        Factory method to create NBond from Tinkoff Bond.
+        """
         return cls(
             figi=bond.figi,
             ticker=bond.ticker,
