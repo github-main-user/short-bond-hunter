@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime, timezone
-from functools import lru_cache
 
 from tinkoff.invest import (
     OrderBook,
@@ -8,7 +7,7 @@ from tinkoff.invest import (
     OrderType,
     PortfolioPosition,
 )
-from tinkoff.invest.services import Services
+from tinkoff.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.utils import normalize_quotation
@@ -18,43 +17,43 @@ from .schemas import NBond
 logger = logging.getLogger(__name__)
 
 
-@lru_cache
-def get_account_id(client: Services) -> str:
+async def get_account_id(client: AsyncServices) -> str:
     """
     Fetches account id.
-    Caches the result using LRU cache.
     """
-    response = client.users.get_accounts()
+    response = await client.users.get_accounts()
     if not response.accounts:
         logger.error("There is no accounts")
 
     return response.accounts[0].id
 
 
-def get_existing_bonds(
-    client: Services, account_id: str
+async def get_existing_bonds(
+    client: AsyncServices, account_id: str
 ) -> dict[str, PortfolioPosition]:
     """
     Fetches existing on account bonds.
     """
-    positions = client.operations.get_portfolio(account_id=account_id).positions
+    positions = (
+        await client.operations.get_portfolio(account_id=account_id)
+    ).positions
     return {p.ticker: p for p in positions if p.instrument_type == "bond"}
 
 
-def get_account_balance(client: Services, account_id: str) -> float:
+async def get_account_balance(client: AsyncServices, account_id: str) -> float:
     """
     Fetches account balance.
     """
     return normalize_quotation(
-        client.operations.get_positions(account_id=account_id).money[0]
+        (await client.operations.get_positions(account_id=account_id)).money[0]
     )
 
 
-def buy_bond(client: Services, account_id: str, bond: NBond, quantity: int):
+async def buy_bond(client: AsyncServices, account_id: str, bond: NBond, quantity: int):
     """
     Posts market order to given bond by given quantity.
     """
-    response = client.orders.post_order(
+    response = await client.orders.post_order(
         account_id=account_id,
         figi=bond.figi,
         quantity=quantity,
@@ -64,7 +63,7 @@ def buy_bond(client: Services, account_id: str, bond: NBond, quantity: int):
     return normalize_quotation(response.total_order_amount)
 
 
-def fetch_coupons_sum(client: Services, bond: NBond) -> float:
+async def fetch_coupons_sum(client: AsyncServices, bond: NBond) -> float:
     from_ = datetime.now(tz=timezone.utc)
     to = bond.maturity_date
 
@@ -72,17 +71,17 @@ def fetch_coupons_sum(client: Services, bond: NBond) -> float:
         logging.warning("Skipping coupons fetching - `to` can't be less then `from`")
         return 0.0
 
-    coupon_resp = client.instruments.get_bond_coupons(
+    coupon_resp = await client.instruments.get_bond_coupons(
         figi=bond.figi, from_=from_, to=to
     )
     return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
 
 
-def fetch_bonds(client: Services) -> list[NBond]:
+async def fetch_bonds(client: AsyncServices) -> list[NBond]:
     """
     Fetches all available bonds on exchange.
     """
-    response = client.instruments.bonds()
+    response = await client.instruments.bonds()
     return [
         NBond.from_bond(
             bond,

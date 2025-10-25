@@ -1,6 +1,6 @@
 import re
 
-import requests
+import aiohttp
 
 from src.config import settings
 
@@ -23,7 +23,7 @@ def _escape_markdown_v2_special_chars(text: str) -> str:
     return "`".join(processed_parts)
 
 
-def send_telegram_message(message: str):
+async def send_telegram_message(message: str):
     """
     Sends message to telegram bot.
     Requires telegram bot token and telegram chat id to be set in settings.
@@ -36,5 +36,6 @@ def send_telegram_message(message: str):
         "parse_mode": "MarkdownV2",
     }
 
-    response = requests.post(url, params=params)
-    response.raise_for_status()
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, params=params) as response:
+            response.raise_for_status()

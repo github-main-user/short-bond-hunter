@@ -1,16 +1,16 @@
+import asyncio
 import logging
-import time
 
-from requests.exceptions import HTTPError
+from aiohttp.client_exceptions import ClientError
 from tinkoff.invest import (
-    Client,
+    AsyncClient,
     MarketDataRequest,
     OrderBookInstrument,
     RequestError,
     SubscribeOrderBookRequest,
     SubscriptionAction,
 )
-from tinkoff.invest.services import Services
+from tinkoff.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.schemas import NBond
@@ -51,12 +51,15 @@ def is_bond_eligible_for_purchase(bond: NBond) -> bool:
     return True
 
 
-def calculate_purchase_quantity(client: Services, bond: NBond, account_id: str) -> int:
+async def calculate_purchase_quantity(
+    client: AsyncServices, bond: NBond, account_id: str
+) -> int:
     """
     Calculates the quantity of a bond to purchase.
     """
-    balance = get_account_balance(client, account_id)
-    existing_bond = get_existing_bonds(client, account_id).get(bond.ticker)
+    balance = await get_account_balance(client, account_id)
+    existing_bonds = await get_existing_bonds(client, account_id)
+    existing_bond = existing_bonds.get(bond.ticker)
 
     quantity_to_buy_single = int(settings.BOND_SUM_MAX_SINGLE // bond.real_price)
 
@@ -98,7 +101,7 @@ def _format_purchase_notification(
     )
 
 
-def process_bond_for_purchase(client: Services, bond: NBond) -> None:
+async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
     """
     Processes a bond for purchase, including eligibility checks, quantity calculation,
     and execution.
@@ -117,12 +120,12 @@ def process_bond_for_purchase(client: Services, bond: NBond) -> None:
     if not is_bond_eligible_for_purchase(bond):
         return
 
-    account_id = get_account_id(client)
-    quantity_to_buy = calculate_purchase_quantity(client, bond, account_id)
+    account_id = await get_account_id(client)
+    quantity_to_buy = await calculate_purchase_quantity(client, bond, account_id)
 
     if quantity_to_buy > 0:
         try:
-            buy_price = buy_bond(client, account_id, bond, quantity_to_buy)
+            buy_price = await buy_bond(client, account_id, bond, quantity_to_buy)
         except Exception as e:
             logger.error("An error occurred while buying the bond: %s", e)
         else:
@@ -134,8 +137,8 @@ def process_bond_for_purchase(client: Services, bond: NBond) -> None:
             )
             logger.info(message)
             try:
-                send_telegram_message(message)
-            except HTTPError as e:
+                await send_telegram_message(message)
+            except ClientError as e:
                 logger.error("An error occurred while sending telegram message: %s", e)
     else:
         logger.info(
@@ -143,33 +146,36 @@ def process_bond_for_purchase(client: Services, bond: NBond) -> None:
         )
 
 
-BOND_REFRESH_INTERVAL_HOURS = 2
+BOND_REFRESH_INTERVAL_HOURS = 3
 BOND_REFRESH_INTERVAL_SECONDS = (60 * 60) * BOND_REFRESH_INTERVAL_HOURS
 
 
-def get_tradable_bonds(client: Services) -> list[NBond]:
+async def get_tradable_bonds(client: AsyncServices) -> list[NBond]:
     """
     Fetches and prepares a list of tradable bonds.
     """
-    bonds = fetch_bonds(client)
+    bonds = await fetch_bonds(client)
     logger.info("Got %s bonds", len(bonds))
 
     bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
     logger.info("%s bonds left after filtration", len(bonds))
 
-    for bond in bonds:
-        bond.coupons_sum = fetch_coupons_sum(client, bond)
+    coupon_sums = await asyncio.gather(
+        *[fetch_coupons_sum(client, bond) for bond in bonds]
+    )
+    for bond, coupon_sum in zip(bonds, coupon_sums):
+        bond.coupons_sum = coupon_sum
 
     return bonds
 
 
-def _handle_market_data_stream(client: Services, bonds: list[NBond]) -> None:
+async def _handle_market_data_stream(client: AsyncServices, bonds: list[NBond]) -> None:
     """
     Handles the market data stream for a list of bonds.
     """
     figi_to_bond_map = {b.figi: b for b in bonds}
 
-    def request_iterator():
+    async def request_iterator():
         yield MarketDataRequest(
             subscribe_order_book_request=SubscribeOrderBookRequest(
                 subscription_action=SubscriptionAction.SUBSCRIPTION_ACTION_SUBSCRIBE,
@@ -177,16 +183,17 @@ def _handle_market_data_stream(client: Services, bonds: list[NBond]) -> None:
             )
         )
         while True:
-            time.sleep(1)
+            await asyncio.sleep(1)
 
     logger.info(f"Subscribed to %s bonds", len(bonds))
 
-    last_update_time = time.time()
+    loop = asyncio.get_event_loop()
+    last_update_time = loop.time()
     try:
-        for marketdata in client.market_data_stream.market_data_stream(
+        async for marketdata in client.market_data_stream.market_data_stream(
             request_iterator()
         ):
-            if time.time() - last_update_time > BOND_REFRESH_INTERVAL_SECONDS:
+            if loop.time() - last_update_time > BOND_REFRESH_INTERVAL_SECONDS:
                 logger.info("Bonds update interval reached. Re-fetching...")
                 break
 
@@ -207,16 +214,16 @@ def _handle_market_data_stream(client: Services, bonds: list[NBond]) -> None:
 
             # if price changed
             if old_price != bond.real_price:
-                process_bond_for_purchase(client, bond)
+                await process_bond_for_purchase(client, bond)
     except RequestError as e:
         logger.error("Error during market data stream: %s", e)
 
 
-def start_market_streaming_session() -> None:
+async def start_market_streaming_session() -> None:
     """
     Starts the main market streaming session.
     """
     while True:
-        with Client(settings.TINVEST_TOKEN) as client:
-            bonds = get_tradable_bonds(client)
-            _handle_market_data_stream(client, bonds)
+        async with AsyncClient(settings.TINVEST_TOKEN) as client:
+            bonds = await get_tradable_bonds(client)
+            await _handle_market_data_stream(client, bonds)

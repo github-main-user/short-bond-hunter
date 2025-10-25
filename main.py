@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import asyncio
 import logging
 
 from src.market.streaming import start_market_streaming_session
@@ -17,7 +18,7 @@ if __name__ == "__main__":
     logging.info("Starting market streaming session")
 
     try:
-        start_market_streaming_session()
+        asyncio.run(start_market_streaming_session())
     except KeyboardInterrupt:
         pass
 
