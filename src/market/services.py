@@ -34,9 +34,7 @@ async def get_existing_bonds(
     """
     Fetches existing on account bonds.
     """
-    positions = (
-        await client.operations.get_portfolio(account_id=account_id)
-    ).positions
+    positions = (await client.operations.get_portfolio(account_id=account_id)).positions
     return {p.ticker: p for p in positions if p.instrument_type == "bond"}
 
 
