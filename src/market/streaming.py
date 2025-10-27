@@ -131,7 +131,7 @@ async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
         else:
             # calculating real_buy_price here, instead of using fee provided by api
             # itself - because in provided by api field fee is always 0 by some reason.
-            real_buy_price = buy_price + bond.fee
+            real_buy_price = buy_price + (bond.fee * quantity_to_buy)
             message = _format_purchase_notification(
                 bond, quantity_to_buy, real_buy_price
             )
