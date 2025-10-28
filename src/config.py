@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     BOND_SUM_MAX: float
     BOND_SUM_MAX_SINGLE: float
 
+    BOND_REFRESH_INTERVAL_HOURS: int = 3
+    BOND_REFRESH_INTERVAL_SECONDS: int = (60 * 60) * BOND_REFRESH_INTERVAL_HOURS
+
     model_config = SettingsConfigDict(env_file=".env")
 
 
