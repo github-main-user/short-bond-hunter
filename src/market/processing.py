@@ -85,8 +85,8 @@ def format_purchase_notification(
         f"Available: {bond.ask_quantity}\n"
         f"Expected price: {bond.real_price * buy_quantity:.2f}₽\n"
         f"Actual price: {buy_price:.2f}₽\n"
-        f"Benefit per 1: {bond.benefit:.2f}₽ in {bond.days_to_maturity} days "
-        f"({bond.benefit / bond.days_to_maturity:.2f}₽ per day)"
+        f"Benefit: {bond.benefit * buy_quantity:.2f}₽ in {bond.days_to_maturity} days "
+        f"({bond.benefit * buy_quantity / bond.days_to_maturity:.2f}₽ per day)"
     )
 
 
