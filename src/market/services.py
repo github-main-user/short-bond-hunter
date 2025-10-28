@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
+from async_lru import alru_cache
 from tinkoff.invest import (
     OrderBook,
     OrderDirection,
@@ -17,6 +18,7 @@ from .schemas import NBond
 logger = logging.getLogger(__name__)
 
 
+@alru_cache
 async def get_account_id(client: AsyncServices) -> str:
     """
     Fetches account id.
