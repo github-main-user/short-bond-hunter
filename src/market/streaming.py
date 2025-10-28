@@ -59,34 +59,31 @@ async def _handle_market_data_stream(client: AsyncServices, bonds: list[NBond]) 
 
     loop = asyncio.get_event_loop()
     last_update_time = loop.time()
-    try:
-        async for marketdata in client.market_data_stream.market_data_stream(
-            request_iterator()
-        ):
-            if loop.time() - last_update_time > settings.BOND_REFRESH_INTERVAL_SECONDS:
-                logger.info("Bonds update interval reached. Re-fetching...")
-                break
+    async for marketdata in client.market_data_stream.market_data_stream(
+        request_iterator()
+    ):
+        if loop.time() - last_update_time > settings.BOND_REFRESH_INTERVAL_SECONDS:
+            logger.info("Bonds update interval reached. Re-fetching...")
+            break
 
-            if not marketdata.orderbook:
-                logger.info("Skipped marketdata - Got no orderbook")
-                continue
+        if not marketdata.orderbook:
+            logger.info("Skipped marketdata - Got no orderbook")
+            continue
 
-            bond = figi_to_bond_map.get(marketdata.orderbook.figi)
-            if not bond:
-                logger.debug(
-                    "Skipped update for bond %s (figi) - Not in the list",
-                    marketdata.orderbook.figi,
-                )
-                continue
+        bond = figi_to_bond_map.get(marketdata.orderbook.figi)
+        if not bond:
+            logger.debug(
+                "Skipped update for bond %s (figi) - Not in the list",
+                marketdata.orderbook.figi,
+            )
+            continue
 
-            old_price = bond.real_price
-            bond.orderbook = marketdata.orderbook
+        old_price = bond.real_price
+        bond.orderbook = marketdata.orderbook
 
-            # if price changed
-            if old_price != bond.real_price:
-                await process_bond_for_purchase(client, bond)
-    except RequestError as e:
-        logger.error("Error during market data stream: %s", e)
+        # if price changed
+        if old_price != bond.real_price:
+            await process_bond_for_purchase(client, bond)
 
 
 async def start_market_streaming_session() -> None:
@@ -94,6 +91,15 @@ async def start_market_streaming_session() -> None:
     Starts the main market streaming session.
     """
     while True:
-        async with AsyncClient(settings.TINVEST_TOKEN) as client:
-            bonds = await get_tradable_bonds(client)
-            await _handle_market_data_stream(client, bonds)
+        try:
+            async with AsyncClient(settings.TINVEST_TOKEN) as client:
+                bonds = await get_tradable_bonds(client)
+                await _handle_market_data_stream(client, bonds)
+        except RequestError as e:
+            logging.error("Tinkoff API error during session: %s", e)
+            logging.info("Retrying in 60 seconds...")
+            await asyncio.sleep(60)
+        except Exception as e:
+            logging.error("En unexpected error occured in the main session loop: %s", e)
+            logging.info("Retrying in 60 seconds...")
+            await asyncio.sleep(60)
