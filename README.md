@@ -46,3 +46,33 @@ Here's a description of the available environment variables:
 *   `BOND_SUM_MAX`: Maximum total sum in RUB for bonds of a single ticker that the bot can hold.
 *   `BOND_SUM_MAX_SINGLE`: Maximum sum in RUB for bonds of a single ticker per one deal.
 *   `BLACK_LIST_TICKERS`: A JSON array of ticker symbols to exclude from trading (e.g., `'["RU000A105JN7", "RU000A10A3R1"]'`).
+
+
+## Installation
+
+There are two recommended ways to install the dependencies for this project.
+
+### With `uv` (recommended)
+
+If you have `uv` installed, you can install the dependencies directly from the `uv.lock` file.
+This is the fastest and most reliable method.
+
+```bash
+uv sync
+```
+
+### With `pip`
+
+If you prefer to use `pip`, you will need a `requirements.txt` file. The project does not ship with one, but you can generate it from the `pyproject.toml` file.
+
+If you have `uv` installed, you can generate the `requirements.txt` file with the following command:
+
+```bash
+uv pip compile pyproject.toml -o requirements.txt
+```
+
+Once the `requirements.txt` file is created, you can install the dependencies using `pip`:
+
+```bash
+pip install -r requirements.txt
+```
