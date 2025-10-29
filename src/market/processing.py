@@ -21,6 +21,10 @@ def is_bond_eligible_for_purchase(bond: NBond) -> bool:
     """
     Checks if a bond is eligible for purchase based on predefined criteria.
     """
+    if bond.ticker in settings.BLACK_LIST_TICKERS:
+        logger.info("Ineligible bond %s: Bond is in black list", bond.ticker)
+        return False
+
     if not (
         settings.ANNUAL_YIELD_MIN <= bond.annual_yield <= settings.ANNUAL_YIELD_MAX
     ):

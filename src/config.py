@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ANNUAL_YIELD_MAX: float
     BOND_SUM_MAX: float
     BOND_SUM_MAX_SINGLE: float
+    BLACK_LIST_TICKERS: set[str]
 
     BOND_REFRESH_INTERVAL_HOURS: int = 3
     BOND_REFRESH_INTERVAL_SECONDS: int = (60 * 60) * BOND_REFRESH_INTERVAL_HOURS
