@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     TINVEST_TOKEN: str
 
-    TELEGRAM_BOT_TOKEN: str
-    TELEGRAM_CHAT_ID: str
+    TELEGRAM_BOT_TOKEN: str | None
+    TELEGRAM_CHAT_ID: str | None
 
     FEE_PERCENT: float
     DAYS_TO_MATURITY_MAX: int
