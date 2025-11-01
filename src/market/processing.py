@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from aiohttp.client_exceptions import ClientError
 from tinkoff.invest.async_services import AsyncServices
@@ -12,6 +13,7 @@ from src.market.services import (
     get_existing_bonds,
 )
 from src.market.utils import normalize_quotation
+from src.state import app_state
 from src.telegram.services import send_telegram_message
 
 logger = logging.getLogger(__name__)
@@ -125,6 +127,10 @@ async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
             # calculating real_buy_price here, instead of using fee provided by api
             # itself - because in provided by api field fee is always 0 by some reason.
             real_buy_price = buy_price + (bond.fee * quantity_to_buy)
+
+            app_state.last_deal_annual_yield = bond.annual_yield
+            app_state.last_deal_datetime = datetime.now(tz=timezone.utc)
+
             message = format_purchase_notification(
                 bond, quantity_to_buy, real_buy_price
             )

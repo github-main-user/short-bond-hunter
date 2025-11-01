@@ -2,6 +2,9 @@
 import asyncio
 import logging
 
+from uvicorn import Config, Server
+
+from src.api import api
 from src.market.streaming import start_market_streaming_session
 
 logging.basicConfig(
@@ -14,11 +17,25 @@ logging.basicConfig(
     ],
 )
 
-if __name__ == "__main__":
-    logging.info("Starting market streaming session")
 
+async def run_api(app, host: str = "0.0.0.0", port: int = 8000):
+    config = Config(app=app, host=host, port=port)
+    server = Server(config)
+    await server.serve()
+
+
+async def main():
+    logging.info("Starting market streaming session and API server")
+
+    api_task = asyncio.create_task(run_api(api))
+    bot_task = asyncio.create_task(start_market_streaming_session())
+
+    await asyncio.gather(api_task, bot_task)
+
+
+if __name__ == "__main__":
     try:
-        asyncio.run(start_market_streaming_session())
+        asyncio.run(main())
     except KeyboardInterrupt:
         pass
 
