@@ -50,29 +50,8 @@ Here's a description of the available environment variables:
 
 ## Installation
 
-There are two recommended ways to install the dependencies for this project.
-
-### With `uv` (recommended)
-
-If you have `uv` installed, you can install the dependencies directly from the `uv.lock` file.
-This is the fastest and most reliable method.
+You can install the dependencies directly from the `uv.lock` file.
 
 ```bash
 uv sync
-```
-
-### With `pip`
-
-If you prefer to use `pip`, you will need a `requirements.txt` file. The project does not ship with one, but you can generate it from the `pyproject.toml` file.
-
-If you have `uv` installed, you can generate the `requirements.txt` file with the following command:
-
-```bash
-uv pip compile pyproject.toml -o requirements.txt
-```
-
-Once the `requirements.txt` file is created, you can install the dependencies using `pip`:
-
-```bash
-pip install -r requirements.txt
 ```
