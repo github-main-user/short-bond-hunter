@@ -97,9 +97,9 @@ async def start_market_streaming_session() -> None:
                 await _handle_market_data_stream(client, bonds)
         except RequestError as e:
             logging.error("Tinkoff API error during session: %s", e)
-            logging.info("Retrying in 60 seconds...")
-            await asyncio.sleep(60)
+            logging.info("Retrying in 5 minutes...")
+            await asyncio.sleep(60 * 5)
         except Exception as e:
             logging.error("En unexpected error occured in the main session loop: %s", e)
-            logging.info("Retrying in 60 seconds...")
-            await asyncio.sleep(60)
+            logging.info("Retrying in 5 minutes...")
+            await asyncio.sleep(60 * 5)
