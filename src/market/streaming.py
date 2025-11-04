@@ -57,33 +57,43 @@ async def _handle_market_data_stream(client: AsyncServices, bonds: list[NBond]) 
 
     logger.info(f"Subscribed to %s bonds", len(bonds))
 
-    loop = asyncio.get_event_loop()
-    last_update_time = loop.time()
-    async for marketdata in client.market_data_stream.market_data_stream(
-        request_iterator()
-    ):
-        if loop.time() - last_update_time > settings.BOND_REFRESH_INTERVAL_SECONDS:
-            logger.info("Bonds update interval reached. Re-fetching...")
-            break
+    async def stream_processor():
+        async for marketdata in client.market_data_stream.market_data_stream(
+            request_iterator()
+        ):
+            if not marketdata.orderbook:
+                logger.info("Skipped marketdata - Got no orderbook")
+                continue
 
-        if not marketdata.orderbook:
-            logger.info("Skipped marketdata - Got no orderbook")
-            continue
+            bond = figi_to_bond_map.get(marketdata.orderbook.figi)
+            if not bond:
+                logger.debug(
+                    "Skipped update for bond %s (figi) - Not in the list",
+                    marketdata.orderbook.figi,
+                )
+                continue
 
-        bond = figi_to_bond_map.get(marketdata.orderbook.figi)
-        if not bond:
-            logger.debug(
-                "Skipped update for bond %s (figi) - Not in the list",
-                marketdata.orderbook.figi,
-            )
-            continue
+            old_price = bond.real_price
+            bond.orderbook = marketdata.orderbook
 
-        old_price = bond.real_price
-        bond.orderbook = marketdata.orderbook
+            # if price changed
+            if old_price != bond.real_price:
+                await process_bond_for_purchase(client, bond)
 
-        # if price changed
-        if old_price != bond.real_price:
-            await process_bond_for_purchase(client, bond)
+    processor_task = asyncio.create_task(stream_processor())
+
+    try:
+        await asyncio.wait_for(
+            processor_task, timeout=settings.BOND_REFRESH_INTERVAL_SECONDS
+        )
+    except asyncio.TimeoutError:
+        logger.info("Bonds update interval reached. Re-fetching...")
+    finally:
+        processor_task.cancel()
+        try:
+            await processor_task
+        except asyncio.CancelledError:
+            logger.debug("Market data stream processing task cancelled.")
 
 
 async def start_market_streaming_session() -> None:
