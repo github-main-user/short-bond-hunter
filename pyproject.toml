@@ -1,7 +1,7 @@
 [project]
 name = "short-bond-hunter"
 version = "0.1.0"
-description = ""
+description = "Auto-bond hunter for MOEX via T-Bank - buys short-term bonds with high yield, low risk, and real-time Telegram notifications."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
