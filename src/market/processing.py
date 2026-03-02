@@ -4,6 +4,7 @@ from aiohttp.client_exceptions import ClientError
 from tinkoff.invest.async_services import AsyncServices
 
 from src.config import settings
+from src.market.messages import compose_purchase_notification
 from src.market.schemas import NBond
 from src.market.api import (
     buy_bond,
@@ -78,22 +79,6 @@ async def calculate_purchase_quantity(
     )
 
 
-def format_purchase_notification(
-    bond: NBond, buy_quantity: int, buy_price: float
-) -> str:
-    """
-    Formats a notification message for a successful bond purchase.
-    """
-    return (
-        f"Bought {buy_quantity} of `{bond.ticker}` ({bond.annual_yield:.2f}%)\n"
-        f"Available: {bond.ask_quantity}\n"
-        f"Expected price: {bond.real_price * buy_quantity:.2f}₽\n"
-        f"Actual price: {buy_price:.2f}₽\n"
-        f"Benefit: {bond.benefit * buy_quantity:.2f}₽ in {bond.days_to_maturity} days "
-        f"({bond.benefit * buy_quantity / bond.days_to_maturity:.2f}₽ per day)"
-    )
-
-
 async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
     """
     Processes a bond for purchase, including eligibility checks, quantity calculation,
@@ -125,7 +110,7 @@ async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
             # calculating real_buy_price here, instead of using fee provided by api
             # itself - because in provided by api field fee is always 0 by some reason.
             real_buy_price = buy_price + (bond.fee * quantity_to_buy)
-            message = format_purchase_notification(
+            message = compose_purchase_notification(
                 bond, quantity_to_buy, real_buy_price
             )
             logger.info(message)
