@@ -12,7 +12,7 @@ from tinkoff.invest import (
 from tinkoff.invest.async_services import AsyncServices
 
 from src.config import settings
-from src.market.processing import process_bond_for_purchase
+from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
 

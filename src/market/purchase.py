@@ -18,7 +18,7 @@ from src.telegram.services import send_telegram_message
 logger = logging.getLogger(__name__)
 
 
-def is_bond_eligible_for_purchase(bond: NBond) -> bool:
+def _is_bond_eligible_for_purchase(bond: NBond) -> bool:
     """
     Checks if a bond is eligible for purchase based on predefined criteria.
     """
@@ -45,7 +45,7 @@ def is_bond_eligible_for_purchase(bond: NBond) -> bool:
     return True
 
 
-async def calculate_purchase_quantity(
+async def _calculate_purchase_quantity(
     client: AsyncServices, bond: NBond, account_id: str
 ) -> int:
     """
@@ -95,11 +95,11 @@ async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
         format(bond.real_price, ".2f"),
     )
 
-    if not is_bond_eligible_for_purchase(bond):
+    if not _is_bond_eligible_for_purchase(bond):
         return
 
     account_id = await get_account_id(client)
-    quantity_to_buy = await calculate_purchase_quantity(client, bond, account_id)
+    quantity_to_buy = await _calculate_purchase_quantity(client, bond, account_id)
 
     if quantity_to_buy > 0:
         try:
