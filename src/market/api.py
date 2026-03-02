@@ -1,12 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from tinkoff.invest import (
-    OrderBook,
-    OrderDirection,
-    OrderType,
-    PortfolioPosition,
-)
+from tinkoff.invest import OrderBook, OrderDirection, OrderType, PortfolioPosition
 from tinkoff.invest.async_services import AsyncServices
 
 from src.config import settings
@@ -84,3 +79,11 @@ async def fetch_bonds(client: AsyncServices) -> list[NBond]:
         )
         for bond in response.instruments
     ]
+
+
+async def fetch_tmon_etf_price(client: AsyncServices) -> float:
+    orderbook = await client.market_data.get_order_book(figi="TCS70A106DL2", depth=1)
+    if not orderbook.asks:
+        logger.warning("Can't fetch TMON@ price: no orderbook available")
+        return 0
+    return normalize_quotation(orderbook.asks[0].price)
