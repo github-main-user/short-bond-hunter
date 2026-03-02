@@ -5,7 +5,7 @@ from tinkoff.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.schemas import NBond
-from src.market.services import (
+from src.market.api import (
     buy_bond,
     get_account_balance,
     get_account_id,
