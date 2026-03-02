@@ -5,7 +5,6 @@ from tinkoff.invest import (
     AsyncClient,
     MarketDataRequest,
     OrderBookInstrument,
-    RequestError,
     SubscribeOrderBookRequest,
     SubscriptionAction,
 )
@@ -35,7 +34,7 @@ async def _handle_market_data_stream(client: AsyncServices, bonds: list[NBond]) 
         while True:
             await asyncio.sleep(1)
 
-    logger.info(f"Subscribed to %s bonds", len(bonds))
+    logger.info("Subscribed to %d bonds", len(bonds))
 
     async def stream_processor():
         async for marketdata in client.market_data_stream.market_data_stream(
@@ -85,11 +84,7 @@ async def start_market_streaming_session() -> None:
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 bonds = await get_tradable_bonds(client)
                 await _handle_market_data_stream(client, bonds)
-        except RequestError as e:
-            logging.error("Tinkoff API error during session: %s", e)
-            logging.info("Retrying in 5 minutes...")
-            await asyncio.sleep(60 * 5)
         except Exception as e:
-            logging.error("En unexpected error occured in the main session loop: %s", e)
-            logging.info("Retrying in 5 minutes...")
+            logger.error("An unexpected error occurred in the main session loop: %s", e)
+            logger.info("Retrying in 5 minutes...")
             await asyncio.sleep(60 * 5)

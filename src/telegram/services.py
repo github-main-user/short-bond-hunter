@@ -6,7 +6,7 @@ from src.config import settings
 
 from .utils import escape_markdown_v2_special_chars
 
-logger = logging.getLogger("__name__")
+logger = logging.getLogger(__name__)
 
 
 async def send_telegram_message(message: str):

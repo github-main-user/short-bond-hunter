@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timezone
 
-from async_lru import alru_cache
 from tinkoff.invest import (
     OrderBook,
     OrderDirection,
@@ -18,11 +17,7 @@ from .schemas import NBond
 logger = logging.getLogger(__name__)
 
 
-@alru_cache
 async def get_account_id(client: AsyncServices) -> str:
-    """
-    Fetches account id.
-    """
     response = await client.users.get_accounts()
     if not response.accounts:
         logger.error("There is no accounts")
@@ -41,12 +36,11 @@ async def get_existing_bonds(
 
 
 async def get_account_balance(client: AsyncServices, account_id: str) -> float:
-    """
-    Fetches account balance.
-    """
-    return normalize_quotation(
-        (await client.operations.get_positions(account_id=account_id)).money[0]
-    )
+    money = (await client.operations.get_positions(account_id=account_id)).money
+    if not money:
+        logger.error("No money positions found for account %s", account_id)
+        return 0.0
+    return normalize_quotation(money[0])
 
 
 async def buy_bond(client: AsyncServices, account_id: str, bond: NBond, quantity: int):
@@ -68,7 +62,7 @@ async def fetch_coupons_sum(client: AsyncServices, bond: NBond) -> float:
     to = bond.maturity_date
 
     if to < from_:
-        logging.warning("Skipping coupons fetching - `to` can't be less then `from`")
+        logger.warning("Skipping coupons fetching - `to` can't be less then `from`")
         return 0.0
 
     coupon_resp = await client.instruments.get_bond_coupons(

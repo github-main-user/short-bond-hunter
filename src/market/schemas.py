@@ -91,7 +91,7 @@ class NBond:
     def annual_yield(self) -> float:
         days = self.days_to_maturity
 
-        if days <= 0:
+        if days <= 0 or self.real_price <= 0:
             return 0.0
 
         return (self.benefit / self.real_price) * (365.25 / days) * 100
