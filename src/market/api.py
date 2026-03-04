@@ -12,7 +12,7 @@ from .schemas import NBond
 logger = logging.getLogger(__name__)
 
 
-async def get_account_id(client: AsyncServices) -> str:
+async def fetch_account_id(client: AsyncServices) -> str:
     response = await client.users.get_accounts()
     if not response.accounts:
         logger.error("There is no accounts")
@@ -20,7 +20,7 @@ async def get_account_id(client: AsyncServices) -> str:
     return response.accounts[0].id
 
 
-async def get_existing_bonds(
+async def fetch_existing_bonds(
     client: AsyncServices, account_id: str
 ) -> dict[str, PortfolioPosition]:
     """
@@ -30,7 +30,7 @@ async def get_existing_bonds(
     return {p.ticker: p for p in positions if p.instrument_type == "bond"}
 
 
-async def get_account_balance(client: AsyncServices, account_id: str) -> float:
+async def fetch_account_balance(client: AsyncServices, account_id: str) -> float:
     money = (await client.operations.get_positions(account_id=account_id)).money
     if not money:
         logger.error("No money positions found for account %s", account_id)

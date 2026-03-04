@@ -6,9 +6,9 @@ from t_tech.invest.async_services import AsyncServices
 from src.config import settings
 from src.market.api import (
     buy_bond,
-    get_account_balance,
-    get_account_id,
-    get_existing_bonds,
+    fetch_account_balance,
+    fetch_account_id,
+    fetch_existing_bonds,
 )
 from src.market.messages import compose_purchase_notification
 from src.market.schemas import NBond
@@ -51,8 +51,8 @@ async def _calculate_purchase_quantity(
     """
     Calculates the quantity of a bond to purchase.
     """
-    balance = await get_account_balance(client, account_id)
-    existing_bonds = await get_existing_bonds(client, account_id)
+    balance = await fetch_account_balance(client, account_id)
+    existing_bonds = await fetch_existing_bonds(client, account_id)
     existing_bond = existing_bonds.get(bond.ticker)
 
     quantity_to_buy_single = int(settings.BOND_SUM_MAX_SINGLE // bond.real_price)
@@ -98,7 +98,7 @@ async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
     if not _is_bond_eligible_for_purchase(bond):
         return
 
-    account_id = await get_account_id(client)
+    account_id = await fetch_account_id(client)
     quantity_to_buy = await _calculate_purchase_quantity(client, bond, account_id)
 
     if quantity_to_buy > 0:
