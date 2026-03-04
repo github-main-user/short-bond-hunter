@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Self
 
-from tinkoff.invest import Bond, OrderBook
+from t_tech.invest import Bond, OrderBook
 
 from .utils import normalize_quotation
 
@@ -32,7 +32,7 @@ class NBond:
     @classmethod  # type: ignore
     def from_bond(cls, bond: Bond, fee_percent: float, orderbook: OrderBook) -> Self:
         """
-        Factory method to create NBond from Tinkoff Bond.
+        Factory method to create NBond from t_tech Bond.
         """
         return cls(
             figi=bond.figi,

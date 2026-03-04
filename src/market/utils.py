@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tinkoff.invest import MoneyValue, Quotation
-from tinkoff.invest.schemas import RiskLevel
+from t_tech.invest import MoneyValue, Quotation
+from t_tech.invest.schemas import RiskLevel
 
 if TYPE_CHECKING:
     from src.market.schemas import NBond
@@ -37,4 +37,3 @@ def filter_bonds(bonds: list[NBond], maximum_days: int) -> list[NBond]:
             )
         )
     ]
-

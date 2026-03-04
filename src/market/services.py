@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from tinkoff.invest.async_services import AsyncServices
+from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.api import fetch_bonds, fetch_coupons_sum

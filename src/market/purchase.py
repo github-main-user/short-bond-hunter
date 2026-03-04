@@ -1,17 +1,17 @@
 import logging
 
 from aiohttp.client_exceptions import ClientError
-from tinkoff.invest.async_services import AsyncServices
+from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
-from src.market.messages import compose_purchase_notification
-from src.market.schemas import NBond
 from src.market.api import (
     buy_bond,
     get_account_balance,
     get_account_id,
     get_existing_bonds,
 )
+from src.market.messages import compose_purchase_notification
+from src.market.schemas import NBond
 from src.market.utils import normalize_quotation
 from src.telegram.services import send_telegram_message
 

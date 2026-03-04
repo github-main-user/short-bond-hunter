@@ -1,14 +1,14 @@
 import asyncio
 import logging
 
-from tinkoff.invest import (
+from t_tech.invest import (
     AsyncClient,
     MarketDataRequest,
     OrderBookInstrument,
     SubscribeOrderBookRequest,
     SubscriptionAction,
 )
-from tinkoff.invest.async_services import AsyncServices
+from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.purchase import process_bond_for_purchase

@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime, timezone
 
-from tinkoff.invest import OrderBook, OrderDirection, OrderType, PortfolioPosition
-from tinkoff.invest.async_services import AsyncServices
+from t_tech.invest import OrderBook, OrderDirection, OrderType, PortfolioPosition
+from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.utils import normalize_quotation
