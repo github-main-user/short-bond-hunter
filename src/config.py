@@ -1,5 +1,8 @@
-from pydantic import computed_field
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -18,7 +21,10 @@ class Settings(BaseSettings):
 
     BOND_REFRESH_INTERVAL_HOURS: int = 3
 
-    @computed_field
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"sqlite:///{BASE_DIR}/stats.db"
+
     @property
     def BOND_REFRESH_INTERVAL_SECONDS(self) -> int:
         return self.BOND_REFRESH_INTERVAL_HOURS * 3600

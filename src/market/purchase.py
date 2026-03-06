@@ -9,10 +9,12 @@ from src.market.api import (
     fetch_account_balance,
     fetch_account_id,
     fetch_existing_bonds,
+    fetch_tmon_etf_price,
 )
 from src.market.messages import compose_purchase_notification
 from src.market.schemas import NBond
 from src.market.utils import normalize_quotation
+from src.stats.repository import StatsRepository
 from src.telegram.services import send_telegram_message
 
 logger = logging.getLogger(__name__)
@@ -79,7 +81,9 @@ async def _calculate_purchase_quantity(
     )
 
 
-async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
+async def process_bond_for_purchase(
+    client: AsyncServices, bond: NBond, stats_repo: StatsRepository
+) -> None:
     """
     Processes a bond for purchase, including eligibility checks, quantity calculation,
     and execution.
@@ -110,6 +114,10 @@ async def process_bond_for_purchase(client: AsyncServices, bond: NBond) -> None:
             # calculating real_buy_price here, instead of using fee provided by api
             # itself - because in provided by api field fee is always 0 by some reason.
             real_buy_price = buy_price + (bond.fee * quantity_to_buy)
+            tmon_price = await fetch_tmon_etf_price(client)
+            stats_repo.save_purchase(
+                bond, quantity_to_buy, real_buy_price / quantity_to_buy, tmon_price
+            )
             message = compose_purchase_notification(
                 bond, quantity_to_buy, real_buy_price
             )

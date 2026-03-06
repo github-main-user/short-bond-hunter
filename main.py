@@ -3,6 +3,7 @@ import asyncio
 import logging
 
 from src.market.streaming import start_market_streaming_session
+from src.stats.database import init_db
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -15,6 +16,7 @@ logging.basicConfig(
 )
 
 if __name__ == "__main__":
+    init_db()
     logging.info("Starting market streaming session")
 
     try:

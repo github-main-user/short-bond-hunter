@@ -14,11 +14,14 @@ from src.config import settings
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
+from src.stats.repository import StatsRepository
 
 logger = logging.getLogger(__name__)
 
 
-async def _handle_market_data_stream(client: AsyncServices, bonds: list[NBond]) -> None:
+async def _handle_market_data_stream(
+    client: AsyncServices, bonds: list[NBond], stats_repo: StatsRepository
+) -> None:
     """
     Handles the market data stream for a list of bonds.
     """
@@ -57,7 +60,7 @@ async def _handle_market_data_stream(client: AsyncServices, bonds: list[NBond]) 
 
             # if price changed
             if old_price != bond.real_price:
-                await process_bond_for_purchase(client, bond)
+                await process_bond_for_purchase(client, bond, stats_repo)
 
     processor_task = asyncio.create_task(stream_processor())
 
@@ -79,11 +82,12 @@ async def start_market_streaming_session() -> None:
     """
     Starts the main market streaming session.
     """
+    stats_repo = StatsRepository()
     while True:
         try:
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 bonds = await get_tradable_bonds(client)
-                await _handle_market_data_stream(client, bonds)
+                await _handle_market_data_stream(client, bonds, stats_repo)
         except Exception as e:
             logger.error("An unexpected error occurred in the main session loop: %s", e)
             logger.info("Retrying in 5 minutes...")
