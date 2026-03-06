@@ -1,35 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime, timezone
 
-from t_tech.invest import MoneyValue, Quotation
+from t_tech.invest import Bond, MoneyValue, Quotation
 from t_tech.invest.schemas import RiskLevel
-
-if TYPE_CHECKING:
-    from src.market.schemas import NBond
 
 
 def normalize_quotation(money: MoneyValue | Quotation) -> float:
-    """
-    Normalizes decimal values like Quotation or MoneyValue value to float.
-    """
     return money.units + (money.nano / 1e9)
 
 
-def filter_bonds(bonds: list[NBond], maximum_days: int) -> list[NBond]:
-    """
-    Filters given bonds by defined criteria.
-    Returns new list of bonds.
-    """
+def filter_bonds(bonds: list[Bond], maximum_days: int) -> list[Bond]:
+    now = datetime.now(tz=timezone.utc).date()
     return [
         bond
         for bond in bonds
         if (
-            not bond.for_qual_investor
-            and not bond.is_unlimited
+            not bond.for_qual_investor_flag
+            and not bond.perpetual_flag
             and bond.currency == "rub"
-            and bond.nominal_currency == "rub"
-            and bond.days_to_maturity <= maximum_days
+            and bond.nominal.currency == "rub"
+            and (bond.maturity_date.date() - now).days <= maximum_days
             and (
                 RiskLevel.RISK_LEVEL_UNSPECIFIED
                 < bond.risk_level

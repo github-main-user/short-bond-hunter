@@ -1,13 +1,14 @@
 import logging
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
-from t_tech.invest import OrderBook, OrderDirection, OrderType, PortfolioPosition
+from t_tech.invest import Bond, OrderDirection, OrderType, PortfolioPosition
 from t_tech.invest.async_services import AsyncServices
 
-from src.config import settings
 from src.market.utils import normalize_quotation
 
-from .schemas import NBond
+if TYPE_CHECKING:
+    from src.market.schemas import NBond
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,6 @@ async def fetch_user_commission(client: AsyncServices) -> float:
 async def fetch_existing_bonds(
     client: AsyncServices, account_id: str
 ) -> dict[str, PortfolioPosition]:
-    """
-    Fetches existing on account bonds.
-    """
     positions = (await client.operations.get_portfolio(account_id=account_id)).positions
     return {p.ticker: p for p in positions if p.instrument_type == "bond"}
 
@@ -49,10 +47,10 @@ async def fetch_account_balance(client: AsyncServices, account_id: str) -> float
     return normalize_quotation(money[0])
 
 
-async def buy_bond(client: AsyncServices, account_id: str, bond: NBond, quantity: int):
-    """
-    Posts market order to given bond by given quantity.
-    """
+async def buy_bond(
+    client: AsyncServices, account_id: str, bond: "NBond", quantity: int
+):
+
     response = await client.orders.post_order(
         account_id=account_id,
         figi=bond.figi,
@@ -63,33 +61,25 @@ async def buy_bond(client: AsyncServices, account_id: str, bond: NBond, quantity
     return normalize_quotation(response.total_order_amount)
 
 
-async def fetch_coupons_sum(client: AsyncServices, bond: NBond) -> float:
+async def fetch_coupons_sum(
+    client: AsyncServices, figi: str, maturity_date: datetime
+) -> float:
     from_ = datetime.now(tz=timezone.utc)
-    to = bond.maturity_date
+    to = maturity_date
 
     if to < from_:
         logger.warning("Skipping coupons fetching - `to` can't be less then `from`")
         return 0.0
 
     coupon_resp = await client.instruments.get_bond_coupons(
-        figi=bond.figi, from_=from_, to=to
+        figi=figi, from_=from_, to=to
     )
     return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
 
 
-async def fetch_bonds(client: AsyncServices, commission_percent: float) -> list[NBond]:
-    """
-    Fetches all available bonds on exchange.
-    """
+async def fetch_raw_bonds(client: AsyncServices) -> list[Bond]:
     response = await client.instruments.bonds()
-    return [
-        NBond.from_bond(
-            bond,
-            commission_percent=commission_percent,
-            orderbook=OrderBook(figi=bond.figi, asks=[]),
-        )
-        for bond in response.instruments
-    ]
+    return list(response.instruments)
 
 
 async def fetch_tmon_etf_price(client: AsyncServices) -> float:

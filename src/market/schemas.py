@@ -9,11 +9,6 @@ from .utils import normalize_quotation
 
 @dataclass
 class NBond:
-    """
-    A wrapper for T-Bank bond with normalized prices and convinient names.
-    Unnecessary fields are not included.
-    """
-
     figi: str
     ticker: str
     nominal: float
@@ -26,16 +21,17 @@ class NBond:
     for_qual_investor: bool
     trading_status: int
     commission_percent: float
-    _coupons_sum: float
-    _orderbook: OrderBook
+    coupons_sum: float
+    orderbook: OrderBook
 
     @classmethod  # type: ignore
     def from_bond(
-        cls, bond: Bond, commission_percent: float, orderbook: OrderBook
+        cls,
+        bond: Bond,
+        commission_percent: float,
+        coupons_sum: float,
+        orderbook: OrderBook,
     ) -> Self:
-        """
-        Factory method to create NBond from t_tech Bond.
-        """
         return cls(
             figi=bond.figi,
             ticker=bond.ticker,
@@ -49,8 +45,8 @@ class NBond:
             for_qual_investor=bond.for_qual_investor_flag,
             trading_status=bond.trading_status,
             commission_percent=commission_percent,
-            _coupons_sum=0.0,
-            _orderbook=orderbook,
+            coupons_sum=coupons_sum,
+            orderbook=orderbook,
         )
 
     @property
@@ -97,19 +93,3 @@ class NBond:
             return 0.0
 
         return (self.benefit / self.real_price) * (365.25 / days) * 100
-
-    @property
-    def orderbook(self) -> OrderBook:
-        return self._orderbook
-
-    @orderbook.setter
-    def orderbook(self, orderbook: OrderBook) -> None:
-        self._orderbook = orderbook
-
-    @property
-    def coupons_sum(self) -> float:
-        return self._coupons_sum
-
-    @coupons_sum.setter
-    def coupons_sum(self, coupons_sum: float) -> None:
-        self._coupons_sum = coupons_sum
