@@ -15,6 +15,7 @@ from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
 from src.stats.repository import StatsRepository
+from src.market.api import fetch_account_id
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ async def _handle_market_data_stream(
     Handles the market data stream for a list of bonds.
     """
     figi_to_bond_map = {b.figi: b for b in bonds}
+    account_id = await fetch_account_id(client)
 
     async def request_iterator():
         yield MarketDataRequest(
@@ -60,7 +62,7 @@ async def _handle_market_data_stream(
 
             # if price changed
             if old_price != bond.real_price:
-                await process_bond_for_purchase(client, bond, stats_repo)
+                await process_bond_for_purchase(client, bond, stats_repo, account_id)
 
     processor_task = asyncio.create_task(stream_processor())
 
