@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None
 
-    FEE_PERCENT: float
     DAYS_TO_MATURITY_MAX: int
     ANNUAL_YIELD_MIN: float
     ANNUAL_YIELD_MAX: float

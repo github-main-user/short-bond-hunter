@@ -39,7 +39,6 @@ Here's a description of the available environment variables:
 
 ### Market Setup
 
-*   `FEE_PERCENT`: Default brokerage fee in percent (e.g., `0.3` for 0.3%). It's recommended to switch to the "Trader" tariff for a 0.05% fee.
 *   `DAYS_TO_MATURITY_MAX`: Maximum number of days to maturity for a bond to be considered.
 *   `ANNUAL_YIELD_MIN`: Minimum annual yield in percent for a bond to be purchased.
 *   `ANNUAL_YIELD_MAX`: Maximum annual yield in percent for a bond to be purchased.
