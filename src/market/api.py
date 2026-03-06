@@ -20,15 +20,15 @@ async def fetch_account_id(client: AsyncServices) -> str:
     return response.accounts[0].id
 
 
-async def fetch_user_fee(client: AsyncServices) -> float:
-    _TINKOFF_TARIFF_FEE = {
+async def fetch_user_commission(client: AsyncServices) -> float:
+    _TINKOFF_TARIFF_COMMISSION = {
         "investor": 0.3,
         "trader": 0.05,
         "premium": 0.04,
     }
 
     response = await client.users.get_info()
-    return _TINKOFF_TARIFF_FEE[response.tariff]
+    return _TINKOFF_TARIFF_COMMISSION[response.tariff]
 
 
 async def fetch_existing_bonds(
@@ -77,7 +77,7 @@ async def fetch_coupons_sum(client: AsyncServices, bond: NBond) -> float:
     return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
 
 
-async def fetch_bonds(client: AsyncServices, fee_percent: float) -> list[NBond]:
+async def fetch_bonds(client: AsyncServices, commission_percent: float) -> list[NBond]:
     """
     Fetches all available bonds on exchange.
     """
@@ -85,7 +85,7 @@ async def fetch_bonds(client: AsyncServices, fee_percent: float) -> list[NBond]:
     return [
         NBond.from_bond(
             bond,
-            fee_percent=fee_percent,
+            commission_percent=commission_percent,
             orderbook=OrderBook(figi=bond.figi, asks=[]),
         )
         for bond in response.instruments

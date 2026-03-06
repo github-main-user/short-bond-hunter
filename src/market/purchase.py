@@ -95,7 +95,7 @@ async def process_bond_for_purchase(
         format(bond.annual_yield, ".2f"),
         format(bond.current_price, ".2f"),
         format(bond.aci_value, ".2f"),
-        format(bond.fee, ".2f"),
+        format(bond.commission, ".2f"),
         format(bond.real_price, ".2f"),
     )
 
@@ -111,9 +111,9 @@ async def process_bond_for_purchase(
         except Exception as e:
             logger.error("An error occurred while buying the bond: %s", e)
         else:
-            # calculating real_buy_price here, instead of using fee provided by api
-            # itself - because in provided by api field fee is always 0 by some reason.
-            real_buy_price = buy_price + (bond.fee * quantity_to_buy)
+            # calculating real_buy_price here, instead of using commission provided by api
+            # itself - because in provided by api field commission is always 0 by some reason.
+            real_buy_price = buy_price + (bond.commission * quantity_to_buy)
             tmon_price = await fetch_tmon_etf_price(client)
             stats_repo.save_purchase(
                 bond, quantity_to_buy, real_buy_price / quantity_to_buy, tmon_price

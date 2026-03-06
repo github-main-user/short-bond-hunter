@@ -25,12 +25,14 @@ class NBond:
     nominal_currency: str
     for_qual_investor: bool
     trading_status: int
-    fee_percent: float
+    commission_percent: float
     _coupons_sum: float
     _orderbook: OrderBook
 
     @classmethod  # type: ignore
-    def from_bond(cls, bond: Bond, fee_percent: float, orderbook: OrderBook) -> Self:
+    def from_bond(
+        cls, bond: Bond, commission_percent: float, orderbook: OrderBook
+    ) -> Self:
         """
         Factory method to create NBond from t_tech Bond.
         """
@@ -46,7 +48,7 @@ class NBond:
             nominal_currency=bond.nominal.currency,
             for_qual_investor=bond.for_qual_investor_flag,
             trading_status=bond.trading_status,
-            fee_percent=fee_percent,
+            commission_percent=commission_percent,
             _coupons_sum=0.0,
             _orderbook=orderbook,
         )
@@ -72,12 +74,12 @@ class NBond:
         return (self.nominal * self.ask_price_percent) / 100
 
     @property
-    def fee(self) -> float:
-        return self.current_price * (self.fee_percent / 100)
+    def commission(self) -> float:
+        return self.current_price * (self.commission_percent / 100)
 
     @property
     def real_price(self) -> float:
-        return self.current_price + self.aci_value + self.fee
+        return self.current_price + self.aci_value + self.commission
 
     @property
     def full_return(self) -> float:

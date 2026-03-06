@@ -4,7 +4,7 @@ import logging
 from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
-from src.market.api import fetch_bonds, fetch_coupons_sum, fetch_user_fee
+from src.market.api import fetch_bonds, fetch_coupons_sum, fetch_user_commission
 from src.market.schemas import NBond
 from src.market.utils import filter_bonds
 
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 async def get_tradable_bonds(client: AsyncServices) -> list[NBond]:
-    user_fee = await fetch_user_fee(client)
-    bonds = await fetch_bonds(client, user_fee)
+    user_commission = await fetch_user_commission(client)
+    bonds = await fetch_bonds(client, user_commission)
     logger.info("Got %s bonds", len(bonds))
 
     bonds = filter_bonds(bonds, maximum_days=settings.DAYS_TO_MATURITY_MAX)
