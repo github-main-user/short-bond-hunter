@@ -22,14 +22,14 @@ async def fetch_account_id(client: AsyncServices) -> str:
 
 
 async def fetch_user_commission(client: AsyncServices) -> float:
-    _TINKOFF_TARIFF_COMMISSION = {
+    _TBANK_TARIFF_COMMISSION = {
         "investor": 0.3,
         "trader": 0.05,
         "premium": 0.04,
     }
 
     response = await client.users.get_info()
-    return _TINKOFF_TARIFF_COMMISSION[response.tariff]
+    return _TBANK_TARIFF_COMMISSION[response.tariff]
 
 
 async def fetch_existing_bonds(
@@ -79,7 +79,7 @@ async def fetch_coupons_sum(
 
 async def fetch_raw_bonds(client: AsyncServices) -> list[Bond]:
     response = await client.instruments.bonds()
-    return list(response.instruments)
+    return response.instruments
 
 
 async def fetch_tmon_etf_price(client: AsyncServices) -> float:

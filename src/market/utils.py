@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
 
 from t_tech.invest import Bond, MoneyValue, Quotation
