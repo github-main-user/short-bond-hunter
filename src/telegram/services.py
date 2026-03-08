@@ -18,7 +18,7 @@ async def send_telegram_message(message: str):
     """
     if settings.TELEGRAM_BOT_TOKEN is None or settings.TELEGRAM_CHAT_ID is None:
         logger.warning(
-            "Tried to send a telegram message, but bot token or chat id isn't set."
+            "Tried to send a telegram message, but bot token or chat ID is not set."
         )
         return
 

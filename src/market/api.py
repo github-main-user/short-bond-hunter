@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 async def fetch_account_id(client: AsyncServices) -> str:
     response = await client.users.get_accounts()
     if not response.accounts:
-        logger.error("There is no accounts")
+        logger.error("No accounts found")
 
     return response.accounts[0].id
 
@@ -42,7 +42,7 @@ async def fetch_existing_bonds(
 async def fetch_account_balance(client: AsyncServices, account_id: str) -> float:
     money = (await client.operations.get_positions(account_id=account_id)).money
     if not money:
-        logger.error("No money positions found for account %s", account_id)
+        logger.error(f"No money positions found for account {account_id}")
         return 0.0
     return normalize_quotation(money[0])
 
@@ -68,7 +68,7 @@ async def fetch_coupons_sum(
     to = maturity_date
 
     if to < from_:
-        logger.warning("Skipping coupons fetching - `to` can't be less then `from`")
+        logger.warning("Skipping coupons fetch - `to` can't be less than `from`")
         return 0.0
 
     coupon_resp = await client.instruments.get_bond_coupons(

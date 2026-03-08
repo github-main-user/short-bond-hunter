@@ -13,7 +13,7 @@ class StatsRepository:
     ) -> None:
         if tmon_price <= 0:
             logger.warning(
-                "Skipping stats for %s: TMON price is unavailable", bond.ticker
+                f"Skipping stats for {bond.ticker}: TMON price is unavailable"
             )
             return
         with SessionLocal() as session:

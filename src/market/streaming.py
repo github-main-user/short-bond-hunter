@@ -39,21 +39,21 @@ async def _handle_market_data_stream(
         while True:
             await asyncio.sleep(1)
 
-    logger.info("Subscribed to %d bonds", len(bonds))
+    logger.info(f"Subscribed to {len(bonds)} bonds")
 
     async def stream_processor():
         async for marketdata in client.market_data_stream.market_data_stream(
             request_iterator()
         ):
             if not marketdata.orderbook:
-                logger.info("Skipped marketdata - Got no orderbook")
+                logger.info("Skipped market data: no orderbook")
                 continue
 
             bond = figi_to_bond_map.get(marketdata.orderbook.figi)
             if not bond:
                 logger.debug(
-                    "Skipped update for bond %s (figi) - Not in the list",
-                    marketdata.orderbook.figi,
+                    f"Skipped update for bond {marketdata.orderbook.figi} "
+                    "(figi): not in the list"
                 )
                 continue
 
@@ -91,6 +91,6 @@ async def start_market_streaming_session() -> None:
                 bonds = await get_tradable_bonds(client)
                 await _handle_market_data_stream(client, bonds, stats_repo)
         except Exception as e:
-            logger.error("An unexpected error occurred in the main session loop: %s", e)
+            logger.error(f"Unexpected error in the main session loop: {e}")
             logger.info("Retrying in 5 minutes...")
             await asyncio.sleep(60 * 5)

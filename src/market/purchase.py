@@ -24,23 +24,21 @@ def _is_bond_eligible_for_purchase(bond: NBond) -> bool:
     Checks if a bond is eligible for purchase based on predefined criteria.
     """
     if bond.ticker in settings.BLACK_LIST_TICKERS:
-        logger.info("Ineligible bond %s: Bond is in black list", bond.ticker)
+        logger.info(f"Ineligible bond {bond.ticker}: bond is in the blacklist")
         return False
 
     if not (
         settings.ANNUAL_YIELD_MIN <= bond.annual_yield <= settings.ANNUAL_YIELD_MAX
     ):
         logger.info(
-            "Ineligible bond %s: Annual yield (%s%%) is not in the allowed range (%s%%, %s%%)",
-            bond.ticker,
-            format(bond.annual_yield, ".2f"),
-            settings.ANNUAL_YIELD_MIN,
-            settings.ANNUAL_YIELD_MAX,
+            f"Ineligible bond {bond.ticker}: annual yield "
+            f"({bond.annual_yield:.2f}%) is not in the allowed range "
+            f"({settings.ANNUAL_YIELD_MIN}%, {settings.ANNUAL_YIELD_MAX}%)"
         )
         return False
 
     if bond.real_price <= 0:
-        logger.info("Ineligible bond %s: `real_price` is not positive", bond.ticker)
+        logger.info(f"Ineligible bond {bond.ticker}: `real_price` is not positive")
         return False
 
     return True
@@ -88,14 +86,9 @@ async def process_bond_for_purchase(
     and execution.
     """
     logger.info(
-        "Processing bond: %s (%sd, %s%%) (%s₽ + %s₽ + %s₽ = %s₽)",
-        bond.ticker,
-        bond.days_to_maturity,
-        format(bond.annual_yield, ".2f"),
-        format(bond.current_price, ".2f"),
-        format(bond.aci_value, ".2f"),
-        format(bond.commission, ".2f"),
-        format(bond.real_price, ".2f"),
+        f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, "
+        f"{bond.annual_yield:.2f}%) ({bond.current_price:.2f}₽ + "
+        f"{bond.aci_value:.2f}₽ + {bond.commission:.2f}₽ = {bond.real_price:.2f}₽)"
     )
 
     if not _is_bond_eligible_for_purchase(bond):
@@ -107,7 +100,7 @@ async def process_bond_for_purchase(
         try:
             buy_price = await buy_bond(client, account_id, bond, quantity_to_buy)
         except Exception as e:
-            logger.error("An error occurred while buying the bond: %s", e)
+            logger.error(f"Error buying bond: {e}")
         else:
             # calculating real_buy_price here, instead of using commission provided by api
             # itself - because in provided by api field commission is always 0 by some reason.
@@ -123,8 +116,8 @@ async def process_bond_for_purchase(
             try:
                 await send_telegram_message(message)
             except ClientError as e:
-                logger.error("An error occurred while sending telegram message: %s", e)
+                logger.error(f"Error sending telegram message: {e}")
     else:
         logger.info(
-            "Skipped bond %s: Calculated quantity is %s", bond.ticker, quantity_to_buy
+            f"Skipped bond {bond.ticker}: calculated quantity is {quantity_to_buy}"
         )
