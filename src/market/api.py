@@ -29,7 +29,11 @@ async def fetch_user_commission(client: AsyncServices) -> float:
     }
 
     response = await client.users.get_info()
-    return _TBANK_TARIFF_COMMISSION[response.tariff]
+
+    tariff_percent = _TBANK_TARIFF_COMMISSION[response.tariff]
+    logger.info(f"User's tariff: {response.tariff} ({tariff_percent}%)")
+
+    return tariff_percent
 
 
 async def fetch_existing_bonds(
