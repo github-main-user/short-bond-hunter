@@ -70,12 +70,19 @@ async def _calculate_purchase_quantity(
 
     quantity_available_to_buy = int(balance // bond.real_price)
 
-    return min(
+    qty = min(
         quantity_to_buy_single,
         quantity_allowed_to_buy,
         quantity_available_to_buy,
         bond.ask_quantity,
     )
+    if qty == 0:
+        logger.info(
+            f"{bond.ticker} quantity breakdown: "
+            f"single={quantity_to_buy_single}, allowed={quantity_allowed_to_buy}, "
+            f"available={quantity_available_to_buy}, ask={bond.ask_quantity}"
+        )
+    return qty
 
 
 async def process_bond_for_purchase(
