@@ -10,6 +10,7 @@ from src.config import settings
 from src.market.api import (
     fetch_coupon_for_repayment,
     fetch_maturity_operations,
+    fetch_ticker_by_figi,
     fetch_tmon_etf_price,
 )
 from src.market.messages import compose_maturity_notification
@@ -85,7 +86,7 @@ async def check_missed_maturities(
         if stats_repo.is_maturity_recorded(repayment.id):
             continue
         logger.info(f"Found unrecorded maturity: {repayment.figi} (op={repayment.id})")
-        ticker = stats_repo.get_ticker_by_figi(repayment.figi)
+        ticker = await fetch_ticker_by_figi(client, repayment.figi)
         if ticker is None:
             logger.warning(
                 f"Skipped recording maturity for {repayment.figi} "

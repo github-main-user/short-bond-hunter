@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from t_tech.invest import (
     Bond,
+    InstrumentIdType,
     Operation,
     OperationState,
     OperationType,
@@ -102,6 +103,14 @@ async def fetch_tmon_etf_price(client: AsyncServices) -> float | None:
     return normalize_quotation(orderbook.asks[0].price)
 
 
+async def fetch_ticker_by_figi(client: AsyncServices, figi: str) -> str | None:
+    response = await client.instruments.get_instrument_by(
+        id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
+        id=figi,
+    )
+    return response.instrument.ticker if response.instrument else None
+
+
 async def fetch_maturity_operations(
     client: AsyncServices, account_id: str, since: datetime
 ) -> list[Operation]:
@@ -130,7 +139,7 @@ async def fetch_coupon_for_repayment(
 ) -> Operation | None:
     response = await client.operations.get_operations(
         account_id=account_id,
-        from_=repayment_date - timedelta(hours=2),  # type: ignore
+        from_=repayment_date + timedelta(hours=-2),  # type: ignore
         to=repayment_date + timedelta(minutes=15),
         state=OperationState.OPERATION_STATE_EXECUTED,
     )

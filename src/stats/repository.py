@@ -24,11 +24,6 @@ class StatsRepository:
             )
             session.commit()
 
-    def get_ticker_by_figi(self, figi: str) -> str | None:
-        with SessionLocal() as session:
-            row = session.query(BondPurchase).filter_by(bond_figi=figi).first()
-            return row.bond_ticker if row else None
-
     def is_maturity_recorded(self, operation_id: str) -> bool:
         with SessionLocal() as session:
             return session.query(
