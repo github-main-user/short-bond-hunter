@@ -1,8 +1,9 @@
 import logging
+from datetime import datetime
 
 from src.market.schemas import NBond
 from src.stats.database import SessionLocal
-from src.stats.models import BondPurchase
+from src.stats.models import BondMaturity, BondPurchase
 
 logger = logging.getLogger(__name__)
 
@@ -11,11 +12,6 @@ class StatsRepository:
     def save_purchase(
         self, bond: NBond, quantity: int, money_spent_per_unit: float, tmon_price: float
     ) -> None:
-        if tmon_price <= 0:
-            logger.warning(
-                f"Skipping stats for {bond.ticker}: TMON price is unavailable"
-            )
-            return
         with SessionLocal() as session:
             session.add(
                 BondPurchase(
@@ -24,6 +20,41 @@ class StatsRepository:
                     quantity=quantity,
                     money_spent_per_unit=money_spent_per_unit,
                     tmon_price_at_buy=tmon_price,
+                )
+            )
+            session.commit()
+
+    def get_ticker_by_figi(self, figi: str) -> str | None:
+        with SessionLocal() as session:
+            row = session.query(BondPurchase).filter_by(bond_figi=figi).first()
+            return row.bond_ticker if row else None
+
+    def is_maturity_recorded(self, operation_id: str) -> bool:
+        with SessionLocal() as session:
+            return session.query(
+                session.query(BondMaturity)
+                .filter_by(operation_id=operation_id)
+                .exists()
+            ).scalar()
+
+    def save_maturity(
+        self,
+        operation_id: str,
+        figi: str,
+        ticker: str,
+        tmon_price: float,
+        money_received: float,
+        matured_at: datetime,
+    ) -> None:
+        with SessionLocal() as session:
+            session.add(
+                BondMaturity(
+                    operation_id=operation_id,
+                    bond_figi=figi,
+                    bond_ticker=ticker,
+                    tmon_price_at_maturity=tmon_price,
+                    money_received=money_received,
+                    matured_at=matured_at,
                 )
             )
             session.commit()

@@ -1,8 +1,16 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
-from t_tech.invest import Bond, OrderDirection, OrderType, PortfolioPosition
+from t_tech.invest import (
+    Bond,
+    Operation,
+    OperationState,
+    OperationType,
+    OrderDirection,
+    OrderType,
+    PortfolioPosition,
+)
 from t_tech.invest.async_services import AsyncServices
 
 from src.market.utils import normalize_quotation
@@ -86,9 +94,50 @@ async def fetch_raw_bonds(client: AsyncServices) -> list[Bond]:
     return response.instruments
 
 
-async def fetch_tmon_etf_price(client: AsyncServices) -> float:
+async def fetch_tmon_etf_price(client: AsyncServices) -> float | None:
     orderbook = await client.market_data.get_order_book(figi="TCS70A106DL2", depth=1)
     if not orderbook.asks:
         logger.warning("Can't fetch TMON@ price: no orderbook available")
-        return 0
+        return
     return normalize_quotation(orderbook.asks[0].price)
+
+
+async def fetch_maturity_operations(
+    client: AsyncServices, account_id: str, since: datetime
+) -> list[Operation]:
+    response = await client.operations.get_operations(
+        account_id=account_id,
+        from_=since,
+        to=datetime.now(tz=timezone.utc),
+        state=OperationState.OPERATION_STATE_EXECUTED,
+    )
+    return [
+        op
+        for op in response.operations
+        if op.operation_type
+        in (
+            OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL,
+            OperationType.OPERATION_TYPE_COUPON,
+        )
+    ]
+
+
+async def fetch_coupon_for_repayment(
+    client: AsyncServices,
+    account_id: str,
+    instrument_uid: str,
+    repayment_date: datetime,
+) -> Operation | None:
+    response = await client.operations.get_operations(
+        account_id=account_id,
+        from_=repayment_date - timedelta(hours=2),  # type: ignore
+        to=repayment_date + timedelta(minutes=15),
+        state=OperationState.OPERATION_STATE_EXECUTED,
+    )
+    for op in response.operations:
+        if (
+            op.operation_type == OperationType.OPERATION_TYPE_COUPON
+            and op.instrument_uid == instrument_uid
+        ):
+            return op
+    return None

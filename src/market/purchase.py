@@ -1,6 +1,5 @@
 import logging
 
-from aiohttp.client_exceptions import ClientError
 from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
@@ -88,10 +87,6 @@ async def _calculate_purchase_quantity(
 async def process_bond_for_purchase(
     client: AsyncServices, bond: NBond, stats_repo: StatsRepository, account_id: str
 ) -> None:
-    """
-    Processes a bond for purchase, including eligibility checks, quantity calculation,
-    and execution.
-    """
     logger.info(
         f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, "
         f"{bond.annual_yield:.2f}%) ({bond.current_price:.2f}₽ + "
@@ -103,28 +98,25 @@ async def process_bond_for_purchase(
 
     quantity_to_buy = await _calculate_purchase_quantity(client, bond, account_id)
 
-    if quantity_to_buy > 0:
-        try:
-            buy_price = await buy_bond(client, account_id, bond, quantity_to_buy)
-        except Exception as e:
-            logger.error(f"Error buying bond: {e}")
-        else:
-            # calculating real_buy_price here, instead of using commission provided by api
-            # itself - because in provided by api field commission is always 0 by some reason.
-            real_buy_price = buy_price + (bond.commission * quantity_to_buy)
-            tmon_price = await fetch_tmon_etf_price(client)
-            stats_repo.save_purchase(
-                bond, quantity_to_buy, real_buy_price / quantity_to_buy, tmon_price
-            )
-            message = compose_purchase_notification(
-                bond, quantity_to_buy, real_buy_price
-            )
-            logger.info(message)
-            try:
-                await send_telegram_message(message)
-            except ClientError as e:
-                logger.error(f"Error sending telegram message: {e}")
-    else:
+    if quantity_to_buy <= 0:
         logger.info(
             f"Skipped bond {bond.ticker}: calculated quantity is {quantity_to_buy}"
         )
+        return
+
+    buy_price = await buy_bond(client, account_id, bond, quantity_to_buy)
+
+    # calculating real_buy_price here, instead of using commission provided by api
+    # itself - because in provided by api field commission is always 0 by some reason.
+    real_buy_price = buy_price + (bond.commission * quantity_to_buy)
+
+    message = compose_purchase_notification(bond, quantity_to_buy, real_buy_price)
+    logger.info(message)
+    await send_telegram_message(message)
+
+    tmon_price = await fetch_tmon_etf_price(client)
+    if tmon_price is None:
+        return
+    stats_repo.save_purchase(
+        bond, quantity_to_buy, real_buy_price / quantity_to_buy, tmon_price
+    )
