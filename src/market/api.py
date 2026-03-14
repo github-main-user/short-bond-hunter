@@ -9,8 +9,11 @@ from t_tech.invest import (
     OperationState,
     OperationType,
     OrderDirection,
+    OrderExecutionReportStatus,
     OrderType,
     PortfolioPosition,
+    PriceType,
+    TimeInForceType,
 )
 from t_tech.invest.async_services import AsyncServices
 
@@ -62,15 +65,27 @@ async def fetch_account_balance(client: AsyncServices, account_id: str) -> float
 
 async def buy_bond(
     client: AsyncServices, account_id: str, bond: "NBond", quantity: int
-):
+) -> float | None:
 
     response = await client.orders.post_order(
         account_id=account_id,
         figi=bond.figi,
         quantity=quantity,
+        price=bond.orderbook.asks[0].price,
         direction=OrderDirection.ORDER_DIRECTION_BUY,
-        order_type=OrderType.ORDER_TYPE_MARKET,
+        order_type=OrderType.ORDER_TYPE_LIMIT,
+        time_in_force=TimeInForceType.TIME_IN_FORCE_FILL_OR_KILL,
+        price_type=PriceType.PRICE_TYPE_POINT,
     )
+    if (
+        response.execution_report_status
+        != OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL
+    ):
+        logger.warning(
+            f"Order for {bond.ticker} was not filled"
+            f" (status: {response.execution_report_status})"
+        )
+        return None
     return normalize_quotation(response.total_order_amount)
 
 
