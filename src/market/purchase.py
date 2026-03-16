@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from t_tech.invest.async_services import AsyncServices
 
@@ -7,7 +8,7 @@ from src.market.api import (
     buy_bond,
     fetch_account_balance,
     fetch_existing_bonds,
-    fetch_tmon_etf_price,
+    fetch_tmon_etf_price_at,
 )
 from src.market.messages import compose_purchase_notification
 from src.market.schemas import NBond
@@ -117,7 +118,7 @@ async def process_bond_for_purchase(
     logger.info(message)
     await send_telegram_message(message)
 
-    tmon_price = await fetch_tmon_etf_price(client)
+    tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
     if tmon_price is None:
         return
     stats_repo.save_purchase(

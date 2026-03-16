@@ -11,7 +11,7 @@ from src.market.api import (
     fetch_coupon_for_repayment,
     fetch_maturity_operations,
     fetch_ticker_by_figi,
-    fetch_tmon_etf_price,
+    fetch_tmon_etf_price_at,
 )
 from src.market.messages import compose_maturity_notification
 from src.market.utils import normalize_quotation
@@ -46,7 +46,7 @@ async def _record_maturity(
     money_received: float,
     matured_at: datetime,
 ) -> None:
-    tmon_price = await fetch_tmon_etf_price(client)
+    tmon_price = await fetch_tmon_etf_price_at(client, matured_at)
     if tmon_price is None:
         return
     stats_repo.save_maturity(

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from t_tech.invest import (
     Bond,
+    CandleInterval,
     InstrumentIdType,
     Operation,
     OperationState,
@@ -110,12 +111,21 @@ async def fetch_raw_bonds(client: AsyncServices) -> list[Bond]:
     return response.instruments
 
 
-async def fetch_tmon_etf_price(client: AsyncServices) -> float | None:
-    orderbook = await client.market_data.get_order_book(figi="TCS70A106DL2", depth=1)
-    if not orderbook.asks:
-        logger.warning("Can't fetch TMON@ price: no orderbook available")
-        return
-    return normalize_quotation(orderbook.asks[0].price)
+async def fetch_tmon_etf_price_at(
+    client: AsyncServices, target_time: datetime
+) -> float | None:
+    response = await client.market_data.get_candles(
+        figi="TCS70A106DL2",
+        from_=target_time - timedelta(minutes=15),  # type: ignore
+        to=target_time + timedelta(minutes=1),
+        interval=CandleInterval.CANDLE_INTERVAL_5_MIN,
+    )
+    if not response.candles:
+        logger.warning(
+            f"Can't fetch TMON@ price at {target_time}: no candles available"
+        )
+        return None
+    return normalize_quotation(response.candles[-1].close)
 
 
 async def fetch_ticker_by_figi(client: AsyncServices, figi: str) -> str | None:
