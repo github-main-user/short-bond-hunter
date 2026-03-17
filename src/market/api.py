@@ -87,7 +87,7 @@ async def buy_bond(
             f" (status: {response.execution_report_status})"
         )
         return None
-    return normalize_quotation(response.total_order_amount)
+    return normalize_quotation(response.total_order_amount) * bond.nominal / 100
 
 
 async def fetch_coupons_sum(
