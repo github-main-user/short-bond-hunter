@@ -89,9 +89,9 @@ async def process_bond_for_purchase(
     client: AsyncServices, bond: NBond, stats_repo: StatsRepository, account_id: str
 ) -> None:
     logger.info(
-        f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, "
-        f"{bond.annual_yield:.2f}%) ({bond.current_price:.2f}₽ + "
-        f"{bond.aci_value:.2f}₽ + {bond.commission:.2f}₽ = {bond.real_price:.2f}₽)"
+        f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, {bond.annual_yield:.2f}%) | "
+        f"return: {bond.nominal:.2f}₽ + {bond.coupons_sum:.2f}₽ = {bond.full_return:.2f}₽ | "
+        f"cost: {bond.current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {bond.commission:.2f}₽ = {bond.real_price:.2f}₽"
     )
 
     if not _is_bond_eligible_for_purchase(bond):
