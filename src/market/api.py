@@ -116,9 +116,9 @@ async def fetch_tmon_etf_price_at(
 ) -> float | None:
     response = await client.market_data.get_candles(
         figi="TCS70A106DL2",
-        from_=target_time - timedelta(minutes=15),  # type: ignore
-        to=target_time + timedelta(minutes=1),
-        interval=CandleInterval.CANDLE_INTERVAL_5_MIN,
+        from_=target_time - timedelta(days=3),  # type: ignore
+        to=target_time,
+        interval=CandleInterval.CANDLE_INTERVAL_DAY,
     )
     if not response.candles:
         logger.warning(
