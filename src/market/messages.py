@@ -1,8 +1,8 @@
 from src.market.schemas import NBond
 
 
-def compose_maturity_notification(ticker: str) -> str:
-    return f"`{ticker}` matured"
+def compose_maturity_notification(ticker: str, money_received: float) -> str:
+    return f"`{ticker}` matured\nReceived: {money_received:.2f}₽"
 
 
 def compose_purchase_notification(

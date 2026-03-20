@@ -54,7 +54,7 @@ async def _record_maturity(
     )
     logger.info(f"Recorded maturity for {ticker} (op={operation_id})")
 
-    message = compose_maturity_notification(ticker)
+    message = compose_maturity_notification(ticker, money_received)
     logger.info(message)
     await send_telegram_message(message)
 
