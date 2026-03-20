@@ -128,12 +128,12 @@ async def fetch_tmon_etf_price_at(
     return normalize_quotation(response.candles[-1].close)
 
 
-async def fetch_ticker_by_figi(client: AsyncServices, figi: str) -> str | None:
-    response = await client.instruments.get_instrument_by(
+async def fetch_bond_by_figi(client: AsyncServices, figi: str) -> Bond | None:
+    response = await client.instruments.bond_by(
         id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
         id=figi,
     )
-    return response.instrument.ticker if response.instrument else None
+    return response.instrument if response.instrument else None
 
 
 async def fetch_maturity_operations(

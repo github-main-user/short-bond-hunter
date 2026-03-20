@@ -8,9 +8,9 @@ from t_tech.invest.schemas import OperationData, OperationsStreamRequest
 
 from src.config import settings
 from src.market.api import (
+    fetch_bond_by_figi,
     fetch_coupon_for_repayment,
     fetch_maturity_operations,
-    fetch_ticker_by_figi,
     fetch_tmon_etf_price_at,
 )
 from src.market.messages import compose_maturity_notification
@@ -86,11 +86,11 @@ async def check_missed_maturities(
         if stats_repo.is_maturity_recorded(repayment.id):
             continue
         logger.info(f"Found unrecorded maturity: {repayment.figi} (op={repayment.id})")
-        ticker = await fetch_ticker_by_figi(client, repayment.figi)
-        if ticker is None:
+        bond = await fetch_bond_by_figi(client, repayment.figi)
+        if bond is None:
             logger.warning(
                 f"Skipped recording maturity for {repayment.figi} "
-                "(figi): related ticker not found"
+                "(figi): bond not found"
             )
             continue
         coupon = coupons_by_instrument.get(repayment.instrument_uid)
@@ -100,9 +100,9 @@ async def check_missed_maturities(
             stats_repo,
             repayment.id,
             repayment.figi,
-            ticker,
+            bond.ticker,
             money_received,
-            repayment.date,
+            bond.maturity_date,
         )
 
 
@@ -127,6 +127,13 @@ async def start_maturity_stream_session(
                     logger.info(
                         f"Maturity event received: {op.figi} / {op.ticker} (op={op.id})"
                     )
+                    bond = await fetch_bond_by_figi(client, op.figi)
+                    if bond is None:
+                        logger.warning(
+                            f"Skipped recording maturity for {op.figi} "
+                            "(figi): bond not found"
+                        )
+                        continue
                     coupon = await fetch_coupon_for_repayment(
                         client, account_id, op.instrument_uid, op.date
                     )
@@ -136,9 +143,9 @@ async def start_maturity_stream_session(
                         stats_repo,
                         op.id,
                         op.figi,
-                        op.ticker,
+                        bond.ticker,
                         money_received,
-                        op.date,
+                        bond.maturity_date,
                     )
         except Exception as e:
             logger.error(f"Unexpected error in maturity stream: {e}")
