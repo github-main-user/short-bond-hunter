@@ -136,7 +136,7 @@ async def fetch_bond_by_figi(client: AsyncServices, figi: str) -> Bond | None:
     return response.instrument if response.instrument else None
 
 
-async def fetch_maturity_operations(
+async def fetch_repayment_operations(
     client: AsyncServices, account_id: str, since: datetime
 ) -> list[Operation]:
     response = await client.operations.get_operations(
@@ -148,11 +148,7 @@ async def fetch_maturity_operations(
     return [
         op
         for op in response.operations
-        if op.operation_type
-        in (
-            OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL,
-            OperationType.OPERATION_TYPE_COUPON,
-        )
+        if op.operation_type == OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL
     ]
 
 

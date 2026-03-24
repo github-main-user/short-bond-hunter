@@ -10,7 +10,7 @@ from src.config import settings
 from src.market.api import (
     fetch_bond_by_figi,
     fetch_coupon_for_repayment,
-    fetch_maturity_operations,
+    fetch_repayment_operations,
     fetch_tmon_etf_price_at,
 )
 from src.market.messages import compose_maturity_notification
@@ -20,7 +20,7 @@ from src.telegram.services import send_telegram_message
 
 logger = logging.getLogger(__name__)
 
-_MISSED_MATURITIES_LOOKBACK_DAYS = 14
+_MISSED_REPAYMENTS_LOOKBACK_DAYS = 14
 
 
 def _sum_maturity_payment(
@@ -63,20 +63,9 @@ async def check_missed_maturities(
     client: AsyncServices, account_id: str, stats_repo: StatsRepository
 ) -> None:
     since = datetime.now(tz=timezone.utc) - timedelta(
-        days=_MISSED_MATURITIES_LOOKBACK_DAYS
+        days=_MISSED_REPAYMENTS_LOOKBACK_DAYS
     )
-    operations = await fetch_maturity_operations(client, account_id, since)
-
-    repayments = [
-        op
-        for op in operations
-        if op.operation_type == OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL
-    ]
-    coupons_by_instrument = {
-        op.instrument_uid: op
-        for op in operations
-        if op.operation_type == OperationType.OPERATION_TYPE_COUPON
-    }
+    repayments = await fetch_repayment_operations(client, account_id, since)
 
     if not repayments:
         logger.info("No missed maturities found")
@@ -86,6 +75,7 @@ async def check_missed_maturities(
         if stats_repo.is_maturity_recorded(repayment.id):
             continue
         logger.info(f"Found unrecorded maturity: {repayment.figi} (op={repayment.id})")
+
         bond = await fetch_bond_by_figi(client, repayment.figi)
         if bond is None:
             logger.warning(
@@ -93,7 +83,10 @@ async def check_missed_maturities(
                 "(figi): bond not found"
             )
             continue
-        coupon = coupons_by_instrument.get(repayment.instrument_uid)
+
+        coupon = await fetch_coupon_for_repayment(
+            client, account_id, repayment.instrument_uid, repayment.date
+        )
         money_received = _sum_maturity_payment(repayment, coupon)
         await _record_maturity(
             client,
@@ -119,30 +112,34 @@ async def start_maturity_stream_session(
                 ):
                     if not response.operation:
                         continue
-                    op = response.operation
-                    if op.type != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
+                    repayment = response.operation
+                    if (
+                        repayment.type
+                        != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL
+                    ):
                         continue
-                    if stats_repo.is_maturity_recorded(op.id):
+                    if stats_repo.is_maturity_recorded(repayment.id):
                         continue
                     logger.info(
-                        f"Maturity event received: {op.figi} / {op.ticker} (op={op.id})"
+                        f"Maturity event received: "
+                        f"{repayment.figi} / {repayment.ticker} (op={repayment.id})"
                     )
-                    bond = await fetch_bond_by_figi(client, op.figi)
+                    bond = await fetch_bond_by_figi(client, repayment.figi)
                     if bond is None:
                         logger.warning(
-                            f"Skipped recording maturity for {op.figi} "
+                            f"Skipped recording maturity for {repayment.figi} "
                             "(figi): bond not found"
                         )
                         continue
                     coupon = await fetch_coupon_for_repayment(
-                        client, account_id, op.instrument_uid, op.date
+                        client, account_id, repayment.instrument_uid, repayment.date
                     )
-                    money_received = _sum_maturity_payment(op, coupon)
+                    money_received = _sum_maturity_payment(repayment, coupon)
                     await _record_maturity(
                         client,
                         stats_repo,
-                        op.id,
-                        op.figi,
+                        repayment.id,
+                        repayment.figi,
                         bond.ticker,
                         money_received,
                         bond.maturity_date,
