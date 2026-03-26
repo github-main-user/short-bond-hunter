@@ -47,8 +47,6 @@ async def _record_maturity(
     matured_at: datetime,
 ) -> None:
     tmon_price = await fetch_tmon_etf_price_at(client, matured_at)
-    if tmon_price is None:
-        return
     stats_repo.save_maturity(
         operation_id, figi, ticker, tmon_price, money_received, matured_at
     )

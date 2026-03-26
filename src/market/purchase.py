@@ -119,8 +119,6 @@ async def process_bond_for_purchase(
     await send_telegram_message(message)
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
-    if tmon_price is None:
-        return
     stats_repo.save_purchase(
         bond, quantity_to_buy, real_buy_price / quantity_to_buy, tmon_price
     )

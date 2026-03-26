@@ -10,7 +10,11 @@ logger = logging.getLogger(__name__)
 
 class StatsRepository:
     def save_purchase(
-        self, bond: NBond, quantity: int, money_spent_per_unit: float, tmon_price: float
+        self,
+        bond: NBond,
+        quantity: int,
+        money_spent_per_unit: float,
+        tmon_price: float | None,
     ) -> None:
         with SessionLocal() as session:
             session.add(
@@ -37,7 +41,7 @@ class StatsRepository:
         operation_id: str,
         figi: str,
         ticker: str,
-        tmon_price: float,
+        tmon_price: float | None,
         money_received: float,
         matured_at: datetime,
     ) -> None:
