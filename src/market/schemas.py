@@ -9,6 +9,7 @@ from .utils import normalize_quotation
 
 @dataclass
 class NBond:
+    name: str
     figi: str
     ticker: str
     nominal: float
@@ -33,6 +34,7 @@ class NBond:
         orderbook: OrderBook,
     ) -> Self:
         return cls(
+            name=bond.name,
             figi=bond.figi,
             ticker=bond.ticker,
             nominal=normalize_quotation(bond.nominal),
