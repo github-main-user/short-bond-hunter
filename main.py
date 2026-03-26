@@ -2,21 +2,15 @@
 import asyncio
 import logging
 
+from src.logging import setup_logging
 from src.market.streaming import start_market_streaming_session
 from src.stats.database import init_db
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("logs/app.log"),
-        logging.FileHandler("logs/latest.log", mode="w"),
-    ],
-)
 
-if __name__ == "__main__":
+def main():
+    setup_logging()
     init_db()
+
     logging.info("Starting market streaming session")
 
     try:
@@ -25,3 +19,7 @@ if __name__ == "__main__":
         pass
 
     logging.info("Ending market streaming session")
+
+
+if __name__ == "__main__":
+    main()
