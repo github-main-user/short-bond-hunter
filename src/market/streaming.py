@@ -11,12 +11,12 @@ from t_tech.invest import (
 from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
+from src.market.api import fetch_account_id
 from src.market.maturity import check_missed_maturities, start_maturity_stream_session
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
 from src.stats.repository import StatsRepository
-from src.market.api import fetch_account_id
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,6 @@ logger = logging.getLogger(__name__)
 async def _handle_market_data_stream(
     client: AsyncServices, bonds: list[NBond], stats_repo: StatsRepository
 ) -> None:
-    """
-    Handles the market data stream for a list of bonds.
-    """
     figi_to_bond_map = {b.figi: b for b in bonds}
     account_id = await fetch_account_id(client)
 
@@ -82,9 +79,6 @@ async def _handle_market_data_stream(
 
 
 async def start_market_streaming_session() -> None:
-    """
-    Starts the main market streaming session.
-    """
     stats_repo = StatsRepository()
 
     async def _market_data_loop() -> None:

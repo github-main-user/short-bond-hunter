@@ -20,9 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 def _is_bond_eligible_for_purchase(bond: NBond) -> bool:
-    """
-    Checks if a bond is eligible for purchase based on predefined criteria.
-    """
     if bond.ticker in settings.BLACK_LIST_TICKERS:
         logger.info(f"Ineligible bond {bond.ticker}: bond is in the blacklist")
         return False
@@ -47,9 +44,6 @@ def _is_bond_eligible_for_purchase(bond: NBond) -> bool:
 async def _calculate_purchase_quantity(
     client: AsyncServices, bond: NBond, account_id: str
 ) -> int:
-    """
-    Calculates the quantity of a bond to purchase.
-    """
     balance = await fetch_account_balance(client, account_id)
     existing_bonds = await fetch_existing_bonds(client, account_id)
     existing_bond = existing_bonds.get(bond.ticker)
