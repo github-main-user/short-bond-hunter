@@ -173,10 +173,12 @@ async def fetch_coupon_for_repayment(
         to=repayment_date + timedelta(minutes=30),
         state=OperationState.OPERATION_STATE_EXECUTED,
     )
-    for op in response.operations:
-        if (
-            op.operation_type == OperationType.OPERATION_TYPE_COUPON
+    return next(
+        (
+            op
+            for op in response.operations
+            if op.operation_type == OperationType.OPERATION_TYPE_COUPON
             and op.instrument_uid == instrument_uid
-        ):
-            return op
-    return None
+        ),
+        None,
+    )
