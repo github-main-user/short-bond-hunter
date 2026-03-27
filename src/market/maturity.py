@@ -31,7 +31,7 @@ def _sum_maturity_payment(
         total += normalize_quotation(coupon.payment)
     else:
         logger.warning(
-            f"No coupon found for repayment {repayment.id} ({repayment.figi}), "
+            f"No coupon found for repayment ({repayment.figi}), "
             "recording repayment amount only"
         )
     return total
@@ -116,17 +116,17 @@ async def start_maturity_stream_session(
                         != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL
                     ):
                         continue
-                    if stats_repo.is_maturity_recorded(repayment.id):
+                    if stats_repo.is_maturity_recorded(repayment.parent_operation_id):
                         continue
                     logger.info(
                         f"Maturity event received: "
-                        f"{repayment.figi} / {repayment.ticker} (op={repayment.id})"
+                        f"{repayment.figi} / {repayment.ticker} (op={repayment.parent_operation_id})"
                     )
                     bond = await fetch_bond_by_figi(client, repayment.figi)
                     if bond is None:
                         logger.warning(
-                            f"Skipped recording maturity for {repayment.figi} "
-                            "(figi): bond not found"
+                            f"Skipped recording maturity for {repayment.figi} (figi): "
+                            "bond not found"
                         )
                         continue
                     coupon = await fetch_coupon_for_repayment(
@@ -136,7 +136,7 @@ async def start_maturity_stream_session(
                     await _record_maturity(
                         client,
                         stats_repo,
-                        repayment.id,
+                        repayment.parent_operation_id,
                         repayment.figi,
                         bond.ticker,
                         money_received,
