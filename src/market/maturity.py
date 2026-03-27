@@ -48,12 +48,16 @@ async def _record_maturity(
     matured_at: datetime,
     money_received_at: datetime,
 ) -> None:
-    tmon_price = await fetch_tmon_etf_price_at(client, matured_at)
+    tmon_price_at_maturity = await fetch_tmon_etf_price_at(client, matured_at)
+    tmon_price_at_money_received = await fetch_tmon_etf_price_at(
+        client, money_received_at
+    )
     stats_repo.save_maturity(
         operation_id,
         figi,
         ticker,
-        tmon_price,
+        tmon_price_at_maturity,
+        tmon_price_at_money_received,
         money_received,
         matured_at,
         money_received_at,
