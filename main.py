@@ -3,8 +3,8 @@ import asyncio
 import logging
 
 from src.logging import setup_logging
-from src.market.streaming import start_market_streaming_session
-from src.stats.database import init_db
+from src.market import start_market_streaming_session
+from src.stats import init_db
 
 
 def main():

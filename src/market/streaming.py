@@ -16,7 +16,7 @@ from src.market.maturity import check_missed_maturities, start_maturity_stream_s
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
-from src.stats.repository import StatsRepository
+from src.stats import StatsRepository
 
 logger = logging.getLogger(__name__)
 

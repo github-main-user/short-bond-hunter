@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from src.market.schemas import NBond
+from src.market import NBond
 from src.stats.database import SessionLocal
 from src.stats.models import BondMaturity, BondPurchase
 

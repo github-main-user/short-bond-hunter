@@ -15,8 +15,8 @@ from src.market.api import (
 )
 from src.market.messages import compose_maturity_notification
 from src.market.utils import normalize_quotation
-from src.stats.repository import StatsRepository
-from src.telegram.services import send_telegram_message
+from src.stats import StatsRepository
+from src.telegram import send_telegram_message
 
 logger = logging.getLogger(__name__)
 
