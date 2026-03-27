@@ -109,7 +109,10 @@ async def process_bond_for_purchase(
     # itself - because in provided by api field commission is always 0 by some reason.
     real_buy_price = buy_price + (bond.commission * quantity_to_buy)
 
-    message = compose_purchase_notification(bond, quantity_to_buy, real_buy_price)
+    remaining_balance = await fetch_account_balance(client, account_id)
+    message = compose_purchase_notification(
+        bond, quantity_to_buy, real_buy_price, remaining_balance
+    )
     logger.info(message)
     try:
         await send_telegram_message(message)
