@@ -7,7 +7,7 @@ from t_tech.invest.async_services import AsyncServices
 from src.config import settings
 from src.market.api import (
     buy_bond,
-    fetch_account_balance,
+    fetch_account_balance_rub,
     fetch_existing_bonds,
     fetch_tmon_etf_price_at,
 )
@@ -45,7 +45,10 @@ def _is_bond_eligible_for_purchase(bond: NBond) -> bool:
 async def _calculate_purchase_quantity(
     client: AsyncServices, bond: NBond, account_id: str
 ) -> int:
-    balance = await fetch_account_balance(client, account_id)
+    balance = await fetch_account_balance_rub(client, account_id)
+    if not balance:
+        return 0
+
     existing_bonds = await fetch_existing_bonds(client, account_id)
     existing_bond = existing_bonds.get(bond.ticker)
 
@@ -109,7 +112,7 @@ async def process_bond_for_purchase(
     # itself - because in provided by api field commission is always 0 by some reason.
     real_buy_price = buy_price + (bond.commission * quantity_to_buy)
 
-    remaining_balance = await fetch_account_balance(client, account_id)
+    remaining_balance = await fetch_account_balance_rub(client, account_id)
     message = compose_purchase_notification(
         bond, quantity_to_buy, real_buy_price, remaining_balance
     )

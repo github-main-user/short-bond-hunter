@@ -56,12 +56,17 @@ async def fetch_existing_bonds(
     return {p.ticker: p for p in positions if p.instrument_type == "bond"}
 
 
-async def fetch_account_balance(client: AsyncServices, account_id: str) -> float:
+async def fetch_account_balance_rub(
+    client: AsyncServices, account_id: str
+) -> float | None:
     money = (await client.operations.get_positions(account_id=account_id)).money
-    if not money:
-        logger.error(f"No money positions found for account {account_id}")
-        return 0.0
-    return normalize_quotation(money[0])
+    money_rub = next((m for m in money if m.currency == "rub"), None)
+    if money_rub is None:
+        logger.warning(
+            f"No money positions with currency RUB found for account {account_id}"
+        )
+        return
+    return normalize_quotation(money_rub)
 
 
 async def buy_bond(
