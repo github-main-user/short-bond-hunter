@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
+from aiohttp import ClientResponseError
 from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
@@ -14,7 +15,7 @@ from src.market.messages import compose_purchase_notification
 from src.market.schemas import NBond
 from src.market.utils import normalize_quotation
 from src.stats import StatsRepository
-from src.telegram import send_telegram_message
+from src.telegram import TelegramNotConfiguredError, send_telegram_message
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,10 @@ async def process_bond_for_purchase(
 
     message = compose_purchase_notification(bond, quantity_to_buy, real_buy_price)
     logger.info(message)
-    await send_telegram_message(message)
+    try:
+        await send_telegram_message(message)
+    except (TelegramNotConfiguredError, ClientResponseError) as e:
+        logger.warning(f"Failed to send telegram message: {e}")
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
     stats_repo.save_purchase(

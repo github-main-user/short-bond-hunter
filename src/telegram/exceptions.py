@@ -1,0 +1,2 @@
+class TelegramNotConfiguredError(Exception):
+    pass

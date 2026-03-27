@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
+from aiohttp import ClientResponseError
 from t_tech.invest import AsyncClient, Operation, OperationType
 from t_tech.invest.async_services import AsyncServices
 from t_tech.invest.schemas import OperationData, OperationsStreamRequest
@@ -16,7 +17,7 @@ from src.market.api import (
 from src.market.messages import compose_maturity_notification
 from src.market.utils import normalize_quotation
 from src.stats import StatsRepository
-from src.telegram import send_telegram_message
+from src.telegram import TelegramNotConfiguredError, send_telegram_message
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,10 @@ async def _record_maturity(
 
     message = compose_maturity_notification(ticker, money_received)
     logger.info(message)
-    await send_telegram_message(message)
+    try:
+        await send_telegram_message(message)
+    except (TelegramNotConfiguredError, ClientResponseError) as e:
+        logger.warning(f"Failed to send telegram message: {e}")
 
 
 async def check_missed_maturities(
