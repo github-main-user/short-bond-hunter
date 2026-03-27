@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from t_tech.invest import (
+    AioRequestError,
     Bond,
     CandleInterval,
     InstrumentIdType,
@@ -134,11 +135,14 @@ async def fetch_tmon_etf_price_at(
 
 
 async def fetch_bond_by_figi(client: AsyncServices, figi: str) -> Bond | None:
-    response = await client.instruments.bond_by(
-        id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
-        id=figi,
-    )
-    return response.instrument if response.instrument else None
+    try:
+        response = await client.instruments.bond_by(
+            id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
+            id=figi,
+        )
+        return response.instrument
+    except AioRequestError:
+        return
 
 
 async def fetch_repayment_operations(
