@@ -46,10 +46,17 @@ async def _record_maturity(
     ticker: str,
     money_received: float,
     matured_at: datetime,
+    money_received_at: datetime,
 ) -> None:
     tmon_price = await fetch_tmon_etf_price_at(client, matured_at)
     stats_repo.save_maturity(
-        operation_id, figi, ticker, tmon_price, money_received, matured_at
+        operation_id,
+        figi,
+        ticker,
+        tmon_price,
+        money_received,
+        matured_at,
+        money_received_at,
     )
     logger.info(f"Recorded maturity for {ticker} (op={operation_id})")
 
@@ -98,6 +105,7 @@ async def check_missed_maturities(
             bond.ticker,
             money_received,
             bond.maturity_date,
+            repayment.date,
         )
 
 
@@ -145,6 +153,7 @@ async def start_maturity_stream_session(
                         bond.ticker,
                         money_received,
                         bond.maturity_date,
+                        repayment.date,
                     )
         except Exception as e:
             logger.error(f"Unexpected error in maturity stream: {e}")

@@ -30,3 +30,4 @@ class BondMaturity(Base):
     tmon_price_at_maturity: Mapped[float | None]
     money_received: Mapped[float]
     matured_at: Mapped[datetime]
+    money_received_at: Mapped[datetime]

@@ -44,6 +44,7 @@ class StatsRepository:
         tmon_price: float | None,
         money_received: float,
         matured_at: datetime,
+        money_received_at: datetime,
     ) -> None:
         with SessionLocal() as session:
             session.add(
@@ -54,6 +55,7 @@ class StatsRepository:
                     tmon_price_at_maturity=tmon_price,
                     money_received=money_received,
                     matured_at=matured_at,
+                    money_received_at=money_received_at,
                 )
             )
             session.commit()
