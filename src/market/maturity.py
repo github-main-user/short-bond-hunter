@@ -21,8 +21,6 @@ from src.telegram import TelegramNotConfiguredError, send_telegram_message
 
 logger = logging.getLogger(__name__)
 
-_MISSED_REPAYMENTS_LOOKBACK_DAYS = 14
-
 
 async def _process_maturity_repayment(
     client: AsyncServices,
@@ -75,7 +73,7 @@ async def check_missed_maturities(
     client: AsyncServices, account_id: str, stats_repo: StatsRepository
 ) -> None:
     since = datetime.now(tz=timezone.utc) - timedelta(
-        days=_MISSED_REPAYMENTS_LOOKBACK_DAYS
+        days=settings.MISSED_REPAYMENTS_LOOKBACK_DAYS
     )
     repayments = await fetch_repayment_operations(client, account_id, since)
 

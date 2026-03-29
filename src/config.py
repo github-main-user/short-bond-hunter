@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     BLACK_LIST_TICKERS: set[str]
 
     BOND_REFRESH_INTERVAL_HOURS: int = 3
+    MISSED_REPAYMENTS_LOOKBACK_DAYS: int = 14
 
     @property
     def DATABASE_URL(self) -> str:
