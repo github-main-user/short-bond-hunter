@@ -161,7 +161,7 @@ async def fetch_repayment_operations(
     ]
 
 
-async def fetch_coupon_for_repayment(
+async def fetch_coupon_operation_for_repayment(
     client: AsyncServices,
     account_id: str,
     instrument_uid: str,
