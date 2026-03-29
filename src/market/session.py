@@ -4,15 +4,17 @@ import logging
 from t_tech.invest import (
     AsyncClient,
     MarketDataRequest,
+    OperationType,
     OrderBookInstrument,
     SubscribeOrderBookRequest,
     SubscriptionAction,
 )
 from t_tech.invest.async_services import AsyncServices
+from t_tech.invest.schemas import OperationsStreamRequest
 
 from src.config import settings
 from src.market.api import fetch_account_id
-from src.market.maturity import check_missed_maturities, maturity_stream_iteration
+from src.market.maturity import check_missed_maturities, _process_maturity_repayment
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
@@ -78,6 +80,33 @@ async def _handle_market_data_stream(
             logger.debug("Market data stream processing task cancelled.")
 
 
+async def _maturity_stream_iteration(
+    account_id: str, stats_repo: StatsRepository
+) -> None:
+    async with AsyncClient(settings.TINVEST_TOKEN) as client:
+        logger.info("Subscribing to operations stream")
+        request = OperationsStreamRequest(accounts=[account_id])
+        async for response in client.operations_stream.operations_stream(request):
+            if not response.operation:
+                continue
+            repayment = response.operation
+            if repayment.type != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
+                continue
+            if stats_repo.is_maturity_recorded(repayment.parent_operation_id):
+                continue
+            logger.info(
+                f"Maturity event received: "
+                f"{repayment.figi} / {repayment.ticker} (op={repayment.parent_operation_id})"
+            )
+            await _process_maturity_repayment(
+                client,
+                stats_repo,
+                account_id,
+                repayment.parent_operation_id,
+                repayment,
+            )
+
+
 async def _with_retry(fn, label: str) -> None:
     while True:
         try:
@@ -104,6 +133,7 @@ async def start_market_streaming_session() -> None:
     await asyncio.gather(
         _with_retry(lambda: _market_data_iteration(stats_repo), "market data stream"),
         _with_retry(
-            lambda: maturity_stream_iteration(account_id, stats_repo), "maturity stream"
+            lambda: _maturity_stream_iteration(account_id, stats_repo),
+            "maturity stream",
         ),
     )

@@ -2,9 +2,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from aiohttp import ClientResponseError
-from t_tech.invest import AsyncClient, Operation, OperationType
+from t_tech.invest import Operation
 from t_tech.invest.async_services import AsyncServices
-from t_tech.invest.schemas import OperationData, OperationsStreamRequest
+from t_tech.invest.schemas import OperationData
 
 from src.config import settings
 from src.market.api import (
@@ -87,30 +87,3 @@ async def check_missed_maturities(
         await _process_maturity_repayment(
             client, stats_repo, account_id, repayment.id, repayment
         )
-
-
-async def maturity_stream_iteration(
-    account_id: str, stats_repo: StatsRepository
-) -> None:
-    async with AsyncClient(settings.TINVEST_TOKEN) as client:
-        logger.info("Subscribing to operations stream")
-        request = OperationsStreamRequest(accounts=[account_id])
-        async for response in client.operations_stream.operations_stream(request):
-            if not response.operation:
-                continue
-            repayment = response.operation
-            if repayment.type != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
-                continue
-            if stats_repo.is_maturity_recorded(repayment.parent_operation_id):
-                continue
-            logger.info(
-                f"Maturity event received: "
-                f"{repayment.figi} / {repayment.ticker} (op={repayment.parent_operation_id})"
-            )
-            await _process_maturity_repayment(
-                client,
-                stats_repo,
-                account_id,
-                repayment.parent_operation_id,
-                repayment,
-            )
