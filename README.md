@@ -14,6 +14,7 @@ The bot interacts with the Moscow Exchange (MOEX) through the T-Bank brokerage.
 5.  **Telegram Notifications (Optional):** You can configure the bot to send notifications to a Telegram channel by providing a valid bot token.
 
 The bot periodically refreshes the list of bonds to ensure the maturity dates remain within the specified range.
+Purchases are executed on an all-or-nothing basis: if the full order cannot be filled immediately, it is cancelled entirely (`TIME_IN_FORCE_FILL_OR_KILL`).
 You can also blacklist specific bonds by their ticker symbol to exclude them from trading.
 
 
@@ -32,25 +33,28 @@ cp .env.example .env
 
 Here's a description of the available environment variables:
 
-*   `TINVEST_TOKEN`: Your T-Bank investment token. Obtain it from [https://developer.tbank.ru/invest/intro/intro/token](https://developer.tbank.ru/invest/intro/intro/token).
-*   `TELEGRAM_BOT_TOKEN`: (Optional) Token for your Telegram chat bot, if you want to receive notifications.
-*   `TELEGRAM_CHAT_ID`: (Optional) Your Telegram chat ID. To find it, send a message to your bot and then use `curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates` in your terminal.
+- `TINVEST_TOKEN`: Your T-Bank investment token. Obtain it from [https://developer.tbank.ru/invest/intro/intro/token](https://developer.tbank.ru/invest/intro/intro/token).
+- `TELEGRAM_BOT_TOKEN`: (Optional) Token for your Telegram chat bot, if you want to receive notifications.
+- `TELEGRAM_CHAT_ID`: (Optional) Your Telegram chat ID. To find it, send a message to your bot and then use `curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates` in your terminal.
 
 
 ### Market Setup
 
-*   `DAYS_TO_MATURITY_MAX`: Maximum number of days to maturity for a bond to be considered.
-*   `ANNUAL_YIELD_MIN`: Minimum annual yield in percent for a bond to be purchased.
-*   `ANNUAL_YIELD_MAX`: Maximum annual yield in percent for a bond to be purchased.
-*   `BOND_SUM_MAX`: Maximum total sum in RUB for bonds of a single ticker that the bot can hold.
-*   `BOND_SUM_MAX_SINGLE`: Maximum sum in RUB for bonds of a single ticker per one deal.
-*   `BLACK_LIST_TICKERS`: A JSON array of ticker symbols to exclude from trading (e.g., `'["RU000A105JN7", "RU000A10A3R1"]'`).
+- `DAYS_TO_MATURITY_MAX`: Maximum number of days to maturity for a bond to be considered.
+- `ANNUAL_YIELD_MIN`: Minimum annual yield in percent for a bond to be purchased.
+- `ANNUAL_YIELD_MAX`: Maximum annual yield in percent for a bond to be purchased.
+- `BOND_SUM_MAX`: Maximum total sum in RUB for bonds of a single ticker that the bot can hold.
+- `BOND_SUM_MAX_SINGLE`: Maximum sum in RUB for bonds of a single ticker per one deal.
+- `BLACK_LIST_TICKERS`: A JSON array of ticker symbols to exclude from trading (e.g., `'["RU000A105JN7", "RU000A10A3R1"]'`).
 
 
-## Installation
+## Installation & Start
 
-You can install the dependencies directly from the `uv.lock` file.
-
+Install dependencies:
 ```bash
 uv sync
+```
+
+```bash
+uv run main.py
 ```
