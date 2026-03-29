@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -90,39 +89,28 @@ async def check_missed_maturities(
         )
 
 
-async def start_maturity_stream_session(
+async def maturity_stream_iteration(
     account_id: str, stats_repo: StatsRepository
 ) -> None:
-    while True:
-        try:
-            async with AsyncClient(settings.TINVEST_TOKEN) as client:
-                logger.info("Subscribing to operations stream")
-                request = OperationsStreamRequest(accounts=[account_id])
-                async for response in client.operations_stream.operations_stream(
-                    request
-                ):
-                    if not response.operation:
-                        continue
-                    repayment = response.operation
-                    if (
-                        repayment.type
-                        != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL
-                    ):
-                        continue
-                    if stats_repo.is_maturity_recorded(repayment.parent_operation_id):
-                        continue
-                    logger.info(
-                        f"Maturity event received: "
-                        f"{repayment.figi} / {repayment.ticker} (op={repayment.parent_operation_id})"
-                    )
-                    await _process_maturity_repayment(
-                        client,
-                        stats_repo,
-                        account_id,
-                        repayment.parent_operation_id,
-                        repayment,
-                    )
-        except Exception as e:
-            logger.error(f"Unexpected error in maturity stream: {e}")
-            logger.info("Retrying in 5 minutes...")
-            await asyncio.sleep(60 * 5)
+    async with AsyncClient(settings.TINVEST_TOKEN) as client:
+        logger.info("Subscribing to operations stream")
+        request = OperationsStreamRequest(accounts=[account_id])
+        async for response in client.operations_stream.operations_stream(request):
+            if not response.operation:
+                continue
+            repayment = response.operation
+            if repayment.type != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
+                continue
+            if stats_repo.is_maturity_recorded(repayment.parent_operation_id):
+                continue
+            logger.info(
+                f"Maturity event received: "
+                f"{repayment.figi} / {repayment.ticker} (op={repayment.parent_operation_id})"
+            )
+            await _process_maturity_repayment(
+                client,
+                stats_repo,
+                account_id,
+                repayment.parent_operation_id,
+                repayment,
+            )

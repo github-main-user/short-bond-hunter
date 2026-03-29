@@ -12,7 +12,7 @@ from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.api import fetch_account_id
-from src.market.maturity import check_missed_maturities, start_maturity_stream_session
+from src.market.maturity import check_missed_maturities, maturity_stream_iteration
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
@@ -78,25 +78,32 @@ async def _handle_market_data_stream(
             logger.debug("Market data stream processing task cancelled.")
 
 
+async def _with_retry(fn, label: str) -> None:
+    while True:
+        try:
+            await fn()
+        except Exception as e:
+            logger.error(f"Unexpected error in {label}: {e}")
+            logger.info("Retrying in 5 minutes...")
+            await asyncio.sleep(60 * 5)
+
+
+async def _market_data_iteration(stats_repo: StatsRepository) -> None:
+    async with AsyncClient(settings.TINVEST_TOKEN) as client:
+        bonds = await get_tradable_bonds(client)
+        await _handle_market_data_stream(client, bonds, stats_repo)
+
+
 async def start_market_streaming_session() -> None:
     stats_repo = StatsRepository()
-
-    async def _market_data_loop() -> None:
-        while True:
-            try:
-                async with AsyncClient(settings.TINVEST_TOKEN) as client:
-                    bonds = await get_tradable_bonds(client)
-                    await _handle_market_data_stream(client, bonds, stats_repo)
-            except Exception as e:
-                logger.error(f"Unexpected error in the main session loop: {e}")
-                logger.info("Retrying in 5 minutes...")
-                await asyncio.sleep(60 * 5)
 
     async with AsyncClient(settings.TINVEST_TOKEN) as client:
         account_id = await fetch_account_id(client)
         await check_missed_maturities(client, account_id, stats_repo)
 
     await asyncio.gather(
-        _market_data_loop(),
-        start_maturity_stream_session(account_id, stats_repo),
+        _with_retry(lambda: _market_data_iteration(stats_repo), "market data stream"),
+        _with_retry(
+            lambda: maturity_stream_iteration(account_id, stats_repo), "maturity stream"
+        ),
     )
