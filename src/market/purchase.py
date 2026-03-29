@@ -108,8 +108,9 @@ async def process_bond_for_purchase(
     if buy_price is None:
         return
 
-    # calculating real_buy_price here, instead of using commission provided by api
-    # itself - because in provided by api field commission is always 0 by some reason.
+    # calculating real_buy_price using our commission here, instead of using commission
+    # provided by response itself - because in response's commission is always 0,
+    # broker itself calculates commission in separate operation
     real_buy_price = buy_price + (bond.commission * quantity_to_buy)
 
     remaining_balance = await fetch_account_balance_rub(client, account_id)
