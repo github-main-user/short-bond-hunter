@@ -14,7 +14,7 @@ from t_tech.invest.schemas import OperationsStreamRequest
 
 from src.config import settings
 from src.market.api import fetch_account_id
-from src.market.maturity import check_missed_maturities, _process_maturity_repayment
+from src.market.maturity import _process_maturity_repayment, check_missed_maturities
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
