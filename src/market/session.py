@@ -23,6 +23,36 @@ from src.stats import StatsRepository
 logger = logging.getLogger(__name__)
 
 
+async def _process_orderbook_update(
+    client: AsyncServices,
+    figi_to_bond_map: dict[str, NBond],
+    stats_repo: StatsRepository,
+    account_id: str,
+    request_iterator,
+) -> None:
+    async for marketdata in client.market_data_stream.market_data_stream(
+        request_iterator()
+    ):
+        if not marketdata.orderbook:
+            logger.info("Skipped market data: no orderbook")
+            continue
+
+        bond = figi_to_bond_map.get(marketdata.orderbook.figi)
+        if not bond:
+            logger.debug(
+                f"Skipped update for bond {marketdata.orderbook.figi} "
+                "(figi): not in the list"
+            )
+            continue
+
+        old_price = bond.real_price
+        bond.orderbook = marketdata.orderbook
+
+        # if price changed
+        if old_price != bond.real_price:
+            await process_bond_for_purchase(client, bond, stats_repo, account_id)
+
+
 async def _handle_market_data_stream(
     client: AsyncServices, bonds: list[NBond], stats_repo: StatsRepository
 ) -> None:
@@ -41,30 +71,11 @@ async def _handle_market_data_stream(
 
     logger.info(f"Subscribed to {len(bonds)} bonds")
 
-    async def stream_processor():
-        async for marketdata in client.market_data_stream.market_data_stream(
-            request_iterator()
-        ):
-            if not marketdata.orderbook:
-                logger.info("Skipped market data: no orderbook")
-                continue
-
-            bond = figi_to_bond_map.get(marketdata.orderbook.figi)
-            if not bond:
-                logger.debug(
-                    f"Skipped update for bond {marketdata.orderbook.figi} "
-                    "(figi): not in the list"
-                )
-                continue
-
-            old_price = bond.real_price
-            bond.orderbook = marketdata.orderbook
-
-            # if price changed
-            if old_price != bond.real_price:
-                await process_bond_for_purchase(client, bond, stats_repo, account_id)
-
-    processor_task = asyncio.create_task(stream_processor())
+    processor_task = asyncio.create_task(
+        _process_orderbook_update(
+            client, figi_to_bond_map, stats_repo, account_id, request_iterator
+        )
+    )
 
     try:
         await asyncio.wait_for(
