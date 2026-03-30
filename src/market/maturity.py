@@ -37,6 +37,14 @@ async def _process_maturity_repayment(
         )
         return
 
+    nominal = normalize_quotation(bond.nominal) or normalize_quotation(
+        bond.initial_nominal
+    )
+    if not nominal:
+        logger.warning(f"Skipped recording maturity for {bond.ticker}: nominal is 0")
+        return
+    quantity = round(money_received / nominal)
+
     coupon = await fetch_coupon_operation_for_repayment(
         client, account_id, repayment.instrument_uid, repayment.date
     )
@@ -54,6 +62,7 @@ async def _process_maturity_repayment(
         bond.ticker,
         tmon_price_at_maturity,
         tmon_price_at_money_received,
+        quantity,
         money_received,
         bond.maturity_date,
         repayment.date,

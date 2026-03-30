@@ -29,6 +29,7 @@ class BondMaturity(Base):
     bond_ticker: Mapped[str]
     tmon_price_at_maturity: Mapped[float | None]
     tmon_price_at_money_received: Mapped[float | None]
+    quantity: Mapped[int]
     money_received: Mapped[float]
     matured_at: Mapped[datetime]
     money_received_at: Mapped[datetime]
