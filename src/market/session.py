@@ -23,6 +23,16 @@ from src.stats import StatsRepository
 logger = logging.getLogger(__name__)
 
 
+async def _with_retry(fn, *args, **kwargs) -> None:
+    while True:
+        try:
+            await fn(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Unexpected error in {fn.__name__}: {e}")
+            logger.info("Retrying in 5 minutes...")
+            await asyncio.sleep(60 * 5)
+
+
 async def _process_orderbook_update(
     client: AsyncServices,
     figi_to_bond_map: dict[str, NBond],
@@ -40,8 +50,8 @@ async def _process_orderbook_update(
         bond = figi_to_bond_map.get(marketdata.orderbook.figi)
         if not bond:
             logger.debug(
-                f"Skipped update for bond {marketdata.orderbook.figi} "
-                "(figi): not in the list"
+                f"Skipped update for bond {marketdata.orderbook.figi} (figi):"
+                " not in the list"
             )
             continue
 
@@ -91,6 +101,12 @@ async def _handle_market_data_stream(
             logger.debug("Market data stream processing task cancelled.")
 
 
+async def _market_data_stream_iteration(stats_repo: StatsRepository) -> None:
+    async with AsyncClient(settings.TINVEST_TOKEN) as client:
+        bonds = await get_tradable_bonds(client)
+        await _handle_market_data_stream(client, bonds, stats_repo)
+
+
 async def _maturity_stream_iteration(
     account_id: str, stats_repo: StatsRepository
 ) -> None:
@@ -100,15 +116,18 @@ async def _maturity_stream_iteration(
         async for response in client.operations_stream.operations_stream(request):
             if not response.operation:
                 continue
+
             repayment = response.operation
             if repayment.type != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
                 continue
             if stats_repo.is_maturity_recorded(repayment.parent_operation_id):
                 continue
+
             logger.info(
                 f"Maturity event received: "
                 f"{repayment.figi} / {repayment.ticker} (op={repayment.parent_operation_id})"
             )
+
             await _process_maturity_repayment(
                 client,
                 stats_repo,
@@ -116,22 +135,6 @@ async def _maturity_stream_iteration(
                 repayment.parent_operation_id,
                 repayment,
             )
-
-
-async def _with_retry(fn, label: str) -> None:
-    while True:
-        try:
-            await fn()
-        except Exception as e:
-            logger.error(f"Unexpected error in {label}: {e}")
-            logger.info("Retrying in 5 minutes...")
-            await asyncio.sleep(60 * 5)
-
-
-async def _market_data_iteration(stats_repo: StatsRepository) -> None:
-    async with AsyncClient(settings.TINVEST_TOKEN) as client:
-        bonds = await get_tradable_bonds(client)
-        await _handle_market_data_stream(client, bonds, stats_repo)
 
 
 async def start_market_streaming_session() -> None:
@@ -142,9 +145,6 @@ async def start_market_streaming_session() -> None:
         await check_missed_maturities(client, account_id, stats_repo)
 
     await asyncio.gather(
-        _with_retry(lambda: _market_data_iteration(stats_repo), "market data stream"),
-        _with_retry(
-            lambda: _maturity_stream_iteration(account_id, stats_repo),
-            "maturity stream",
-        ),
+        _with_retry(_market_data_stream_iteration, stats_repo),
+        _with_retry(_maturity_stream_iteration, account_id, stats_repo),
     )
