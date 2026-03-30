@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientError
 from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
@@ -120,7 +120,7 @@ async def process_bond_for_purchase(
     logger.info(message)
     try:
         await send_telegram_message(message)
-    except (TelegramNotConfiguredError, ClientResponseError) as e:
+    except (TelegramNotConfiguredError, ClientError) as e:
         logger.warning(f"Failed to send telegram message: {e}")
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from aiohttp import ClientResponseError
+from aiohttp import ClientError
 from t_tech.invest import Operation
 from t_tech.invest.async_services import AsyncServices
 from t_tech.invest.schemas import OperationData
@@ -64,7 +64,7 @@ async def _process_maturity_repayment(
     logger.info(message)
     try:
         await send_telegram_message(message)
-    except (TelegramNotConfiguredError, ClientResponseError) as e:
+    except (TelegramNotConfiguredError, ClientError) as e:
         logger.error(f"Failed to send telegram message: {e}")
 
 
