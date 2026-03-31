@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 from src.stats.database import SessionLocal
-from src.stats.models import BondMaturity, BondPurchase
+from src.stats.models import BondMaturity, BondPurchase, RiskLevel
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,13 @@ class StatsRepository:
         figi: str,
         ticker: str,
         quantity: int,
-        money_spent_per_unit: float,
+        nominal: float,
+        price: float,
+        aci_value: float,
+        commission_percent: float,
+        real_price: float,
+        coupons_sum: float,
+        risk_level: int,
         tmon_price: float | None,
     ) -> None:
         with SessionLocal() as session:
@@ -22,7 +28,13 @@ class StatsRepository:
                     bond_figi=figi,
                     bond_ticker=ticker,
                     quantity=quantity,
-                    money_spent_per_unit=money_spent_per_unit,
+                    nominal=nominal,
+                    price=price,
+                    aci_value=aci_value,
+                    commission_percent=commission_percent,
+                    real_price=real_price,
+                    coupons_sum=coupons_sum,
+                    risk_level=RiskLevel.from_int(risk_level),
                     tmon_price_at_buy=tmon_price,
                 )
             )
@@ -43,8 +55,8 @@ class StatsRepository:
         ticker: str,
         tmon_price_at_maturity: float | None,
         tmon_price_at_money_received: float | None,
-        quantity: int,
-        money_received: float,
+        principal_received: float,
+        coupon_received: float | None,
         matured_at: datetime,
         money_received_at: datetime,
     ) -> None:
@@ -56,8 +68,8 @@ class StatsRepository:
                     bond_ticker=ticker,
                     tmon_price_at_maturity=tmon_price_at_maturity,
                     tmon_price_at_money_received=tmon_price_at_money_received,
-                    quantity=quantity,
-                    money_received=money_received,
+                    principal_received=principal_received,
+                    coupon_received=coupon_received,
                     matured_at=matured_at,
                     money_received_at=money_received_at,
                 )

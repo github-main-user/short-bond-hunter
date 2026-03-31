@@ -128,6 +128,12 @@ async def process_bond_for_purchase(
         bond.figi,
         bond.ticker,
         quantity_to_buy,
+        bond.nominal,
+        bond.current_price,
+        bond.aci_value,
+        bond.commission_percent,
         real_buy_price / quantity_to_buy,
+        bond.coupons_sum,
+        bond.risk_level,
         tmon_price,
     )

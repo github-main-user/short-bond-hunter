@@ -28,7 +28,7 @@ async def _process_maturity_repayment(
     operation_id: str,
     repayment: Operation | OperationData,
 ) -> None:
-    money_received = normalize_quotation(repayment.payment)
+    principal_received = normalize_quotation(repayment.payment)
 
     bond = await fetch_bond_by_figi(client, repayment.figi)
     if bond is None:
@@ -37,20 +37,13 @@ async def _process_maturity_repayment(
         )
         return
 
-    nominal = normalize_quotation(bond.nominal) or normalize_quotation(
-        bond.initial_nominal
-    )
-    if not nominal:
-        logger.warning(f"Skipped recording maturity for {bond.ticker}: nominal is 0")
-        return
-    quantity = round(money_received / nominal)
-
     coupon = await fetch_coupon_operation_for_repayment(
         client, account_id, repayment.instrument_uid, repayment.date
     )
-    if coupon is not None:
-        money_received += normalize_quotation(coupon.payment)
-    else:
+    coupon_received = (
+        normalize_quotation(coupon.payment) if coupon is not None else None
+    )
+    if coupon is None:
         logger.warning(f"No coupon operation found for repayment: {operation_id}")
 
     tmon_price_at_maturity = await fetch_tmon_etf_price_at(client, bond.maturity_date)
@@ -62,14 +55,15 @@ async def _process_maturity_repayment(
         bond.ticker,
         tmon_price_at_maturity,
         tmon_price_at_money_received,
-        quantity,
-        money_received,
+        principal_received,
+        coupon_received,
         bond.maturity_date,
         repayment.date,
     )
     logger.info(f"Recorded maturity for {bond.ticker} (op={operation_id})")
 
-    message = compose_maturity_notification(bond.ticker, money_received)
+    total_received = principal_received + (coupon_received or 0)
+    message = compose_maturity_notification(bond.ticker, total_received)
     logger.info(message)
     try:
         await send_telegram_message(message)

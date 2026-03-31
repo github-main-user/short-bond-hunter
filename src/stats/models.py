@@ -1,7 +1,19 @@
 from datetime import datetime
+from enum import Enum
 
 from sqlalchemy import func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class RiskLevel(Enum):
+    UNSPECIFIED = "UNSPECIFIED"
+    LOW = "LOW"
+    MODERATE = "MODERATE"
+    HIGH = "HIGH"
+
+    @classmethod  # type: ignore
+    def from_int(cls, value: int) -> "RiskLevel":
+        return [cls.UNSPECIFIED, cls.LOW, cls.MODERATE, cls.HIGH][value]
 
 
 class Base(DeclarativeBase):
@@ -15,7 +27,13 @@ class BondPurchase(Base):
     bond_figi: Mapped[str]
     bond_ticker: Mapped[str]
     quantity: Mapped[int]
-    money_spent_per_unit: Mapped[float]
+    nominal: Mapped[float]
+    price: Mapped[float]
+    aci_value: Mapped[float]
+    commission_percent: Mapped[float]
+    real_price: Mapped[float]
+    coupons_sum: Mapped[float]
+    risk_level: Mapped[RiskLevel]
     tmon_price_at_buy: Mapped[float | None]
     bought_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
@@ -29,7 +47,7 @@ class BondMaturity(Base):
     bond_ticker: Mapped[str]
     tmon_price_at_maturity: Mapped[float | None]
     tmon_price_at_money_received: Mapped[float | None]
-    quantity: Mapped[int]
-    money_received: Mapped[float]
+    principal_received: Mapped[float]
+    coupon_received: Mapped[float | None]
     matured_at: Mapped[datetime]
     money_received_at: Mapped[datetime]
