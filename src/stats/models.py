@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
-from sqlalchemy import func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+_MSK = timezone(timedelta(hours=3))
 
 
 class RiskLevel(Enum):
@@ -35,7 +36,7 @@ class BondPurchase(Base):
     coupons_sum: Mapped[float]
     risk_level: Mapped[RiskLevel]
     tmon_price_at_buy: Mapped[float | None]
-    bought_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    bought_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(_MSK))
 
 
 class BondMaturity(Base):
