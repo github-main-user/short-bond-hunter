@@ -77,7 +77,7 @@ async def _calculate_purchase_quantity(
     if qty == 0:
         logger.info(
             f"{bond.ticker} quantity breakdown: "
-            f"single={quantity_to_buy_single}, allowed={quantity_allowed_to_buy}, "
+            f"allowed_single={quantity_to_buy_single}, allowed_total={quantity_allowed_to_buy}, "
             f"balance={quantity_available_to_buy}, asks={bond.ask_quantity}"
         )
     return qty
