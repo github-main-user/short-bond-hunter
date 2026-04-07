@@ -14,7 +14,11 @@ from t_tech.invest.schemas import OperationsStreamRequest
 
 from src.config import settings
 from src.market.api import fetch_account_id
-from src.market.maturity import _process_maturity_repayment, check_missed_maturities
+from src.market.maturity import (
+    _process_coupon_for_maturity,
+    _process_maturity_repayment,
+    check_missed_maturities,
+)
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
 from src.market.services import get_tradable_bonds
@@ -114,27 +118,30 @@ async def _maturity_stream_iteration(
         logger.info("Subscribing to operations stream")
         request = OperationsStreamRequest(accounts=[account_id])
         async for response in client.operations_stream.operations_stream(request):
-            if not response.operation:
-                continue
+            operation = response.operation
 
-            repayment = response.operation
-            if repayment.type != OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
-                continue
-            if stats_repo.is_maturity_recorded(repayment.parent_operation_id):
-                continue
+            match operation.type:
+                case OperationType.OPERATION_TYPE_COUPON:
+                    await _process_coupon_for_maturity(
+                        stats_repo, operation.figi, operation.payment
+                    )
+                case OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
+                    if stats_repo.is_maturity_recorded(operation.parent_operation_id):
+                        continue
 
-            logger.info(
-                f"Maturity event received: "
-                f"{repayment.figi} / {repayment.ticker} (op={repayment.parent_operation_id})"
-            )
+                    logger.info(
+                        f"Maturity event received:"
+                        f" {operation.figi} / {operation.ticker}"
+                        f" (op={operation.parent_operation_id})"
+                    )
 
-            await _process_maturity_repayment(
-                client,
-                stats_repo,
-                account_id,
-                repayment.parent_operation_id,
-                repayment,
-            )
+                    await _process_maturity_repayment(
+                        client,
+                        stats_repo,
+                        account_id,
+                        operation.parent_operation_id,
+                        operation,
+                    )
 
 
 async def start_market_streaming_session() -> None:

@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from aiohttp import ClientError
-from t_tech.invest import Operation
+from t_tech.invest import MoneyValue, Operation
 from t_tech.invest.async_services import AsyncServices
 from t_tech.invest.schemas import OperationData
 
@@ -13,7 +13,10 @@ from src.market.api import (
     fetch_repayment_operations,
     fetch_tmon_etf_price_at,
 )
-from src.market.messages import compose_maturity_notification
+from src.market.messages import (
+    compose_late_coupon_notification,
+    compose_maturity_notification,
+)
 from src.market.utils import normalize_quotation
 from src.stats import StatsRepository
 from src.telegram import TelegramNotConfiguredError, send_telegram_message
@@ -62,9 +65,28 @@ async def _process_maturity_repayment(
     )
     logger.info(f"Recorded maturity for {bond.ticker} (op={operation_id})")
 
-    total_received = principal_received + (coupon_received or 0)
-    message = compose_maturity_notification(bond.ticker, total_received)
+    message = compose_maturity_notification(
+        bond.ticker, principal_received, coupon_received
+    )
     logger.info(message)
+    try:
+        await send_telegram_message(message)
+    except (TelegramNotConfiguredError, ClientError) as e:
+        logger.error(f"Failed to send telegram message: {e}")
+
+
+async def _process_coupon_for_maturity(
+    stats_repo: StatsRepository,
+    figi: str,
+    payment: MoneyValue,
+) -> None:
+    coupon_amount = normalize_quotation(payment)
+    result = stats_repo.update_maturity_coupon(figi, coupon_amount)
+    if result is None:
+        return
+    ticker, principal, coupon = result
+    logger.info(f"Late coupon received for {ticker}: {coupon:.2f}₽")
+    message = compose_late_coupon_notification(ticker, principal, coupon)
     try:
         await send_telegram_message(message)
     except (TelegramNotConfiguredError, ClientError) as e:

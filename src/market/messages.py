@@ -1,8 +1,24 @@
 from src.market.schemas import NBond
 
 
-def compose_maturity_notification(ticker: str, money_received: float) -> str:
-    return f"`{ticker}` matured\nReceived: {money_received:.2f}₽"
+def compose_maturity_notification(
+    ticker: str, principal: float, coupon: float | None
+) -> str:
+    lines = [f"`{ticker}` matured", f"Principal: {principal:.2f}₽"]
+    if coupon is not None:
+        lines.append(f"Coupon: {coupon:.2f}₽")
+        lines.append(f"Total: {principal + coupon:.2f}₽")
+    return "\n".join(lines)
+
+
+def compose_late_coupon_notification(
+    ticker: str, principal: float, coupon: float
+) -> str:
+    return (
+        f"`{ticker}` late coupon received\n"
+        f"Coupon: {coupon:.2f}₽\n"
+        f"Total: {principal + coupon:.2f}₽"
+    )
 
 
 def compose_purchase_notification(

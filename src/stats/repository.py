@@ -75,3 +75,19 @@ class StatsRepository:
                 )
             )
             session.commit()
+
+    def update_maturity_coupon(
+        self, figi: str, coupon_received: float
+    ) -> tuple[str, float, float] | None:
+        with SessionLocal() as session:
+            record = (
+                session.query(BondMaturity)
+                .filter_by(bond_figi=figi)
+                .filter(BondMaturity.coupon_received.is_(None))
+                .first()
+            )
+            if record is None:
+                return None
+            record.coupon_received = coupon_received
+            session.commit()
+            return record.bond_ticker, record.principal_received, coupon_received
