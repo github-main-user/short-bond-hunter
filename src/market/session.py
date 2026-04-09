@@ -115,7 +115,6 @@ async def _maturity_stream_iteration(
     account_id: str, stats_repo: StatsRepository
 ) -> None:
     async with AsyncClient(settings.TINVEST_TOKEN) as client:
-        logger.info("Subscribing to operations stream")
         request = OperationsStreamRequest(accounts=[account_id])
         async for response in client.operations_stream.operations_stream(request):
             if not response.operation:
