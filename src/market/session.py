@@ -119,7 +119,7 @@ async def _maturity_stream_iteration(
         request = OperationsStreamRequest(accounts=[account_id])
         async for response in client.operations_stream.operations_stream(request):
             if not response.operation:
-                return
+                continue
             operation = response.operation
 
             match operation.type:
