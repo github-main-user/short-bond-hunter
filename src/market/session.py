@@ -118,6 +118,8 @@ async def _maturity_stream_iteration(
         logger.info("Subscribing to operations stream")
         request = OperationsStreamRequest(accounts=[account_id])
         async for response in client.operations_stream.operations_stream(request):
+            if not response.operation:
+                return
             operation = response.operation
 
             match operation.type:
