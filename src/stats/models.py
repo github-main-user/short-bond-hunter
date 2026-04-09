@@ -52,3 +52,7 @@ class BondMaturity(Base):
     coupon_received: Mapped[float | None]
     matured_at: Mapped[datetime]
     money_received_at: Mapped[datetime]
+
+    @property
+    def money_received(self) -> float:
+        return self.principal_received + (self.coupon_received or 0)
