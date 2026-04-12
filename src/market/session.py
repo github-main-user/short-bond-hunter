@@ -15,9 +15,9 @@ from t_tech.invest.schemas import OperationsStreamRequest
 from src.config import settings
 from src.market.api import fetch_account_id
 from src.market.maturity import (
-    _process_coupon_for_maturity,
-    _process_maturity_repayment,
     check_missed_maturities,
+    process_coupon_for_maturity,
+    process_maturity_repayment,
 )
 from src.market.purchase import process_bond_for_purchase
 from src.market.schemas import NBond
@@ -123,7 +123,7 @@ async def _maturity_stream_iteration(
 
             match operation.type:
                 case OperationType.OPERATION_TYPE_COUPON:
-                    await _process_coupon_for_maturity(
+                    await process_coupon_for_maturity(
                         stats_repo, operation.figi, operation.payment
                     )
                 case OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL:
@@ -136,7 +136,7 @@ async def _maturity_stream_iteration(
                         f" (op={operation.parent_operation_id})"
                     )
 
-                    await _process_maturity_repayment(
+                    await process_maturity_repayment(
                         client,
                         stats_repo,
                         account_id,
