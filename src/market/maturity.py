@@ -24,7 +24,7 @@ from src.telegram import TelegramNotConfiguredError, send_telegram_message
 logger = logging.getLogger(__name__)
 
 
-async def _process_maturity_repayment(
+async def process_maturity_repayment(
     client: AsyncServices,
     stats_repo: StatsRepository,
     account_id: str,
@@ -75,7 +75,7 @@ async def _process_maturity_repayment(
         logger.error(f"Failed to send telegram message: {e}")
 
 
-async def _process_coupon_for_maturity(
+async def process_coupon_for_maturity(
     stats_repo: StatsRepository,
     figi: str,
     payment: MoneyValue,
@@ -109,6 +109,6 @@ async def check_missed_maturities(
         if stats_repo.is_maturity_recorded(repayment.id):
             continue
         logger.info(f"Found unrecorded maturity: {repayment.figi} (op={repayment.id})")
-        await _process_maturity_repayment(
+        await process_maturity_repayment(
             client, stats_repo, account_id, repayment.id, repayment
         )
