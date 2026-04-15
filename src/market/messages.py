@@ -2,10 +2,15 @@ from src.market.schemas import NBond
 
 
 def compose_maturity_notification(
-    ticker: str, principal: float, coupon: float | None, is_missed: bool = False
+    ticker: str,
+    bond_name: str,
+    principal: float,
+    coupon: float | None,
+    is_missed: bool = False,
 ) -> str:
     lines = [
         f"`{ticker}` matured{' (missed)' if is_missed else ''}",
+        f"Name: {bond_name}",
         f"Principal: {principal:.2f}₽",
     ]
     if coupon is not None:

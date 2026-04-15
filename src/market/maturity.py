@@ -67,7 +67,7 @@ async def process_maturity_repayment(
     logger.info(f"Recorded maturity for {bond.ticker} (op={operation_id})")
 
     message = compose_maturity_notification(
-        bond.ticker, principal_received, coupon_received, is_missed
+        bond.ticker, bond.name, principal_received, coupon_received, is_missed
     )
     logger.info(message)
     try:
