@@ -30,6 +30,7 @@ async def process_maturity_repayment(
     account_id: str,
     operation_id: str,
     repayment: Operation | OperationData,
+    is_missed: bool,
 ) -> None:
     principal_received = normalize_quotation(repayment.payment)
 
@@ -66,7 +67,7 @@ async def process_maturity_repayment(
     logger.info(f"Recorded maturity for {bond.ticker} (op={operation_id})")
 
     message = compose_maturity_notification(
-        bond.ticker, principal_received, coupon_received
+        bond.ticker, principal_received, coupon_received, is_missed
     )
     logger.info(message)
     try:
@@ -110,5 +111,5 @@ async def check_missed_maturities(
             continue
         logger.info(f"Found unrecorded maturity: {repayment.figi} (op={repayment.id})")
         await process_maturity_repayment(
-            client, stats_repo, account_id, repayment.id, repayment
+            client, stats_repo, account_id, repayment.id, repayment, is_missed=True
         )

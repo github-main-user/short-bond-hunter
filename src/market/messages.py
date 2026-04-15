@@ -2,9 +2,12 @@ from src.market.schemas import NBond
 
 
 def compose_maturity_notification(
-    ticker: str, principal: float, coupon: float | None
+    ticker: str, principal: float, coupon: float | None, is_missed: bool = False
 ) -> str:
-    lines = [f"`{ticker}` matured", f"Principal: {principal:.2f}₽"]
+    lines = [
+        f"`{ticker}` matured{' (missed)' if is_missed else ''}",
+        f"Principal: {principal:.2f}₽",
+    ]
     if coupon is not None:
         lines.append(f"Coupon: {coupon:.2f}₽")
         lines.append(f"Total: {principal + coupon:.2f}₽")

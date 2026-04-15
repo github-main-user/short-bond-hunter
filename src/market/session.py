@@ -142,6 +142,7 @@ async def _maturity_stream_iteration(
                         account_id,
                         operation.parent_operation_id,
                         operation,
+                        is_missed=False,
                     )
 
 
