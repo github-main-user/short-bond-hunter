@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from logging.handlers import TimedRotatingFileHandler
 
 
 class _TzFormatter(logging.Formatter):
@@ -17,8 +18,7 @@ def setup_logging():
 
     handlers: list[logging.Handler] = [
         logging.StreamHandler(),
-        logging.FileHandler("logs/app.log"),
-        logging.FileHandler("logs/latest.log", mode="w"),
+        TimedRotatingFileHandler("logs/app.log", when="midnight", backupCount=14),
     ]
     for h in handlers:
         h.setFormatter(formatter)
