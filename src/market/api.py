@@ -164,7 +164,7 @@ async def fetch_repayment_operations(
 async def fetch_coupon_operation_for_repayment(
     client: AsyncServices,
     account_id: str,
-    instrument_uid: str,
+    figi: str,
     repayment_date: datetime,
 ) -> Operation | None:
     response = await client.operations.get_operations(
@@ -172,13 +172,13 @@ async def fetch_coupon_operation_for_repayment(
         from_=repayment_date + timedelta(hours=-3),  # type: ignore
         to=repayment_date + timedelta(hours=2),
         state=OperationState.OPERATION_STATE_EXECUTED,
+        figi=figi,
     )
     return next(
         (
             op
             for op in response.operations
             if op.operation_type == OperationType.OPERATION_TYPE_COUPON
-            and op.instrument_uid == instrument_uid
         ),
         None,
     )
