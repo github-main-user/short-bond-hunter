@@ -169,8 +169,8 @@ async def fetch_coupon_operation_for_repayment(
 ) -> Operation | None:
     response = await client.operations.get_operations(
         account_id=account_id,
-        from_=repayment_date + timedelta(hours=-2),  # type: ignore
-        to=repayment_date + timedelta(minutes=30),
+        from_=repayment_date + timedelta(hours=-3),  # type: ignore
+        to=repayment_date + timedelta(hours=2),
         state=OperationState.OPERATION_STATE_EXECUTED,
     )
     return next(
