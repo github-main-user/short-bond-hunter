@@ -42,7 +42,7 @@ async def process_maturity_repayment(
         return
 
     coupon = await fetch_coupon_operation_for_repayment(
-        client, account_id, repayment.instrument_uid, repayment.date
+        client, account_id, repayment.figi, repayment.date
     )
     coupon_received = (
         normalize_quotation(coupon.payment) if coupon is not None else None
