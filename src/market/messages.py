@@ -10,7 +10,7 @@ def compose_maturity_notification(
 ) -> str:
     lines = [
         f"`{ticker}` matured{' (missed)' if is_missed else ''}",
-        f"Name: {bond_name}",
+        f'Name: "{bond_name}"',
         f"Principal: {principal:.2f}₽",
     ]
     if coupon is not None:
