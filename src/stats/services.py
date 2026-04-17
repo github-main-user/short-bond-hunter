@@ -14,6 +14,9 @@ def generate_statistics():
 
     ticker_to_maturity = {m.bond_ticker: m for m in maturities}
 
+    total_returned_bond = 0
+    total_returned_tmon = 0
+
     for purchase in purchases:
         # assert if purchase.real_price and calculated manually real price don't match
 
@@ -57,6 +60,10 @@ def generate_statistics():
             if days > 0 and purchase.tmon_price_at_buy > 0
             else 0.0
         )
+        returned_bond = (return_per_bond - purchase.real_price) * purchase.quantity
+        returned_tmon = (
+            related_maturity.tmon_price_at_maturity - purchase.tmon_price_at_buy
+        ) * quantity_on_tmon
 
         print(
             f"\n{purchase.bond_ticker} (x{purchase.quantity}):"
@@ -66,14 +73,25 @@ def generate_statistics():
             " ("
             f"spent: {purchase.real_price * purchase.quantity:.2f}₽,"
             f" return: {return_per_bond * purchase.quantity:.2f}₽,"
-            f" total returned: {((return_per_bond - purchase.real_price) * purchase.quantity):.2f}₽,"
+            f" total returned: {returned_bond:.2f}₽,"
             f" annual yield: {bond_annual_yield:.2f}%"
             ")"
             "\nTMON:"
             " ("
             f"spent: {related_maturity.tmon_price_at_maturity * quantity_on_tmon:.2f}₽,"
             f" return: {purchase.tmon_price_at_buy * quantity_on_tmon:.2f}₽,"
-            f" total returned: {((related_maturity.tmon_price_at_maturity - purchase.tmon_price_at_buy) * quantity_on_tmon):.2f}₽,"
+            f" total returned: {returned_tmon:.2f}₽,"
             f" annual yield: {tmon_annual_yield:.2f}%"
-            ")"
+            ")",
         )
+        total_returned_bond += returned_bond
+        total_returned_tmon += returned_tmon
+
+    print(
+        "\n"
+        + "=" * 40
+        + (
+            f"\nTotal returned BOND: {total_returned_bond:.2f}₽"
+            f"\nTotal returned TMON: {total_returned_tmon:.2f}₽"
+        )
+    )
