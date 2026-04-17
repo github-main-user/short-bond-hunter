@@ -4,6 +4,9 @@ from datetime import datetime
 from src.stats.database import SessionLocal
 from src.stats.models import BondMaturity, BondPurchase, RiskLevel
 
+from .database import SessionLocal
+from .models import BondMaturity, BondPurchase
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,3 +94,11 @@ class StatsRepository:
             record.coupon_received = coupon_received
             session.commit()
             return record.bond_ticker, record.principal_received, coupon_received
+
+    def get_all_purchases(self) -> list[BondPurchase]:
+        with SessionLocal() as session:
+            return session.query(BondPurchase).all()
+
+    def get_all_maturities(self) -> list[BondMaturity]:
+        with SessionLocal() as session:
+            return session.query(BondMaturity).all()
