@@ -25,32 +25,6 @@ class EnrichedBond:
     coupons_sum: float
     orderbook: OrderBook
 
-    @classmethod  # type: ignore
-    def from_bond(
-        cls,
-        bond: Bond,
-        commission_percent: float,
-        coupons_sum: float,
-        orderbook: OrderBook,
-    ) -> Self:
-        return cls(
-            name=bond.name,
-            figi=bond.figi,
-            ticker=bond.ticker,
-            nominal=normalize_quotation(bond.nominal),
-            aci_value=normalize_quotation(bond.aci_value),
-            maturity_date=bond.maturity_date,
-            risk_level=bond.risk_level,
-            is_unlimited=bond.perpetual_flag,
-            currency=bond.currency,
-            nominal_currency=bond.nominal.currency,
-            for_qual_investor=bond.for_qual_investor_flag,
-            trading_status=bond.trading_status,
-            commission_percent=commission_percent,
-            coupons_sum=coupons_sum,
-            orderbook=orderbook,
-        )
-
     @property
     def days_to_maturity(self) -> int:
         return (self.maturity_date.date() - datetime.now(tz=timezone.utc).date()).days
@@ -95,3 +69,32 @@ class EnrichedBond:
             return 0.0
 
         return (self.benefit / self.real_price) * (365.25 / days) * 100
+
+    @classmethod  # type: ignore
+    def from_bond(
+        cls,
+        bond: Bond,
+        commission_percent: float,
+        coupons_sum: float,
+        orderbook: OrderBook,
+    ) -> Self:
+        return cls(
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            nominal=normalize_quotation(bond.nominal),
+            aci_value=normalize_quotation(bond.aci_value),
+            maturity_date=bond.maturity_date,
+            risk_level=bond.risk_level,
+            is_unlimited=bond.perpetual_flag,
+            currency=bond.currency,
+            nominal_currency=bond.nominal.currency,
+            for_qual_investor=bond.for_qual_investor_flag,
+            trading_status=bond.trading_status,
+            commission_percent=commission_percent,
+            coupons_sum=coupons_sum,
+            orderbook=orderbook,
+        )
+
+    def update(self, orderbook: OrderBook) -> None:
+        self.orderbook = orderbook

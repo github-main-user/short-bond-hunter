@@ -14,13 +14,13 @@ from t_tech.invest.schemas import OperationsStreamRequest
 
 from src.config import settings
 from src.market.api import fetch_account_id
+from src.market.domain import EnrichedBond
 from src.market.maturity import (
     check_missed_maturities,
     process_coupon_for_maturity,
     process_maturity_repayment,
 )
 from src.market.purchase import process_bond_for_purchase
-from src.market.domain import EnrichedBond
 from src.market.services import get_tradable_bonds
 from src.stats import StatsRepository
 
@@ -60,7 +60,7 @@ async def _process_orderbook_update(
             continue
 
         old_price = bond.real_price
-        bond.orderbook = marketdata.orderbook
+        bond.update(marketdata.orderbook)
 
         # if price changed
         if old_price != bond.real_price:
