@@ -20,7 +20,7 @@ from src.market.maturity import (
     process_maturity_repayment,
 )
 from src.market.purchase import process_bond_for_purchase
-from src.market.schemas import NBond
+from src.market.domain import EnrichedBond
 from src.market.services import get_tradable_bonds
 from src.stats import StatsRepository
 
@@ -39,7 +39,7 @@ async def _with_retry(fn, *args, **kwargs) -> None:
 
 async def _process_orderbook_update(
     client: AsyncServices,
-    figi_to_bond_map: dict[str, NBond],
+    figi_to_bond_map: dict[str, EnrichedBond],
     stats_repo: StatsRepository,
     account_id: str,
     request_iterator,
@@ -68,7 +68,7 @@ async def _process_orderbook_update(
 
 
 async def _handle_market_data_stream(
-    client: AsyncServices, bonds: list[NBond], stats_repo: StatsRepository
+    client: AsyncServices, bonds: list[EnrichedBond], stats_repo: StatsRepository
 ) -> None:
     figi_to_bond_map = {b.figi: b for b in bonds}
     account_id = await fetch_account_id(client)

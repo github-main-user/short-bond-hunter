@@ -12,7 +12,7 @@ from src.market.api import (
     fetch_tmon_etf_price_at,
 )
 from src.market.messages import compose_purchase_notification
-from src.market.schemas import NBond
+from src.market.domain import EnrichedBond
 from src.market.utils import normalize_quotation
 from src.stats import StatsRepository
 from src.telegram import TelegramNotConfiguredError, send_telegram_message
@@ -20,7 +20,7 @@ from src.telegram import TelegramNotConfiguredError, send_telegram_message
 logger = logging.getLogger(__name__)
 
 
-def _is_bond_eligible_for_purchase(bond: NBond) -> bool:
+def _is_bond_eligible_for_purchase(bond: EnrichedBond) -> bool:
     if bond.ticker in settings.BLACK_LIST_TICKERS:
         logger.info(f"Ineligible bond {bond.ticker}: bond is in the blacklist")
         return False
@@ -43,7 +43,7 @@ def _is_bond_eligible_for_purchase(bond: NBond) -> bool:
 
 
 async def _calculate_purchase_quantity(
-    client: AsyncServices, bond: NBond, account_id: str
+    client: AsyncServices, bond: EnrichedBond, account_id: str
 ) -> int:
     balance = await fetch_account_balance_rub(client, account_id)
     if not balance:
@@ -84,7 +84,10 @@ async def _calculate_purchase_quantity(
 
 
 async def process_bond_for_purchase(
-    client: AsyncServices, bond: NBond, stats_repo: StatsRepository, account_id: str
+    client: AsyncServices,
+    bond: EnrichedBond,
+    stats_repo: StatsRepository,
+    account_id: str,
 ) -> None:
     logger.info(
         f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, {bond.annual_yield:.2f}%) | "

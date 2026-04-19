@@ -22,7 +22,7 @@ from t_tech.invest.async_services import AsyncServices
 from src.market.utils import normalize_quotation
 
 if TYPE_CHECKING:
-    from src.market.schemas import NBond
+    from src.market.domain import EnrichedBond
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ async def fetch_account_balance_rub(
 
 
 async def buy_bond(
-    client: AsyncServices, account_id: str, bond: "NBond", quantity: int
+    client: AsyncServices, account_id: str, bond: "EnrichedBond", quantity: int
 ) -> float | None:
 
     response = await client.orders.post_order(

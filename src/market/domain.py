@@ -8,7 +8,7 @@ from .utils import normalize_quotation
 
 
 @dataclass
-class NBond:
+class EnrichedBond:
     name: str
     figi: str
     ticker: str

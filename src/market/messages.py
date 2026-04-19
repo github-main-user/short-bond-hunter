@@ -1,4 +1,4 @@
-from src.market.schemas import NBond
+from src.market.domain import EnrichedBond
 
 
 def compose_maturity_notification(
@@ -30,7 +30,10 @@ def compose_late_coupon_notification(
 
 
 def compose_purchase_notification(
-    bond: NBond, buy_quantity: int, buy_price: float, remaining_balance: float | None
+    bond: EnrichedBond,
+    buy_quantity: int,
+    buy_price: float,
+    remaining_balance: float | None,
 ) -> str:
     return (
         f"Bought {buy_quantity} of `{bond.ticker}` ({bond.annual_yield:.2f}%)\n"

@@ -6,13 +6,13 @@ from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.api import fetch_coupons_sum, fetch_raw_bonds, fetch_user_commission
-from src.market.schemas import NBond
+from src.market.domain import EnrichedBond
 from src.market.utils import filter_bonds
 
 logger = logging.getLogger(__name__)
 
 
-async def get_tradable_bonds(client: AsyncServices) -> list[NBond]:
+async def get_tradable_bonds(client: AsyncServices) -> list[EnrichedBond]:
     user_commission = await fetch_user_commission(client)
     raw_bonds = await fetch_raw_bonds(client)
     logger.info(f"Got {len(raw_bonds)} bonds")
@@ -25,7 +25,7 @@ async def get_tradable_bonds(client: AsyncServices) -> list[NBond]:
     )
 
     return [
-        NBond.from_bond(
+        EnrichedBond.from_bond(
             bond,
             commission_percent=user_commission,
             coupons_sum=coupon_sum,
