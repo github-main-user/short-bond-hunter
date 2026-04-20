@@ -48,7 +48,7 @@ async def process_maturity_repayment(
         normalize_quotation(coupon.payment) if coupon is not None else None
     )
     if coupon is None:
-        logger.warning(f"No coupon operation found for repayment: {operation_id}")
+        logger.warning(f"No coupon operation found for figi: {repayment.figi}")
 
     tmon_price_at_maturity = await fetch_tmon_etf_price_at(client, bond.maturity_date)
     tmon_price_at_money_received = await fetch_tmon_etf_price_at(client, repayment.date)
