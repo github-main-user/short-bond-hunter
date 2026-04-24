@@ -145,7 +145,7 @@ async def fetch_bond_by_figi(client: AsyncServices, figi: str) -> Bond | None:
         return
 
 
-async def fetch_repayment_operations(
+async def fetch_operations(
     client: AsyncServices, account_id: str, since: datetime
 ) -> list[Operation]:
     response = await client.operations.get_operations(
@@ -154,11 +154,7 @@ async def fetch_repayment_operations(
         to=datetime.now(tz=timezone.utc),
         state=OperationState.OPERATION_STATE_EXECUTED,
     )
-    return [
-        op
-        for op in response.operations
-        if op.operation_type == OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL
-    ]
+    return response.operations
 
 
 async def fetch_coupon_operation_for_repayment(
