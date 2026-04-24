@@ -11,8 +11,8 @@ from src.market.api import (
     fetch_existing_bonds,
     fetch_tmon_etf_price_at,
 )
-from src.market.messages import compose_purchase_notification
 from src.market.domain import EnrichedBond
+from src.market.messages import compose_purchase_notification
 from src.market.utils import normalize_quotation
 from src.stats import StatsRepository
 from src.telegram import TelegramNotConfiguredError, send_telegram_message
@@ -83,7 +83,7 @@ async def _calculate_purchase_quantity(
     return qty
 
 
-async def process_bond_for_purchase(
+async def process_bond(
     client: AsyncServices,
     bond: EnrichedBond,
     stats_repo: StatsRepository,
@@ -116,16 +116,6 @@ async def process_bond_for_purchase(
     # broker itself calculates commission in separate operation
     real_buy_price = buy_price + (bond.commission * quantity_to_buy)
 
-    remaining_balance = await fetch_account_balance_rub(client, account_id)
-    message = compose_purchase_notification(
-        bond, quantity_to_buy, real_buy_price, remaining_balance
-    )
-    logger.info(message)
-    try:
-        await send_telegram_message(message)
-    except (TelegramNotConfiguredError, ClientError) as e:
-        logger.warning(f"Failed to send telegram message: {e}")
-
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
     stats_repo.save_purchase(
         bond.figi,
@@ -140,3 +130,13 @@ async def process_bond_for_purchase(
         bond.risk_level,
         tmon_price,
     )
+
+    remaining_balance = await fetch_account_balance_rub(client, account_id)
+    message = compose_purchase_notification(
+        bond, quantity_to_buy, real_buy_price, remaining_balance
+    )
+    logger.info(message)
+    try:
+        await send_telegram_message(message)
+    except (TelegramNotConfiguredError, ClientError) as e:
+        logger.warning(f"Failed to send telegram message: {e}")
