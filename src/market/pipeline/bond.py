@@ -117,7 +117,7 @@ async def process_bond(
     real_buy_price = buy_price + (bond.commission * quantity_to_buy)
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
-    stats_repo.save_purchase(
+    stats_repo.save_purchase(  # TODO: pass by key
         bond.figi,
         bond.ticker,
         quantity_to_buy,

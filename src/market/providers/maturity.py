@@ -44,9 +44,7 @@ class RealtimeMaturityProvider:
 
                 yield MaturityEvent(
                     event_type=event_type,
-                    bond_name=operation.name,
                     bond_figi=operation.figi,
-                    bond_ticker=operation.ticker,
                     payment=normalize_quotation(operation.payment),
                     operation_date=operation.date,
                     is_missed=False,
@@ -79,9 +77,7 @@ class DailyMissedMaturityProvider:
 
                     yield MaturityEvent(
                         event_type=event_type,
-                        bond_name=bond.name,
                         bond_figi=operation.figi,
-                        bond_ticker=bond.ticker,
                         payment=normalize_quotation(operation.payment),
                         operation_date=operation.date,
                         is_missed=True,
