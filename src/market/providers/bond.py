@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 class BondProvider:
-    def __init__(self, token: str, settings: Settings) -> None:
-        self._token = token
-        self._settings = settings
+    def __init__(self, settings: Settings) -> None:
+        self._token = settings.TINVEST_TOKEN
+        self._bond_refresh_interval_seconds = settings.BOND_REFRESH_INTERVAL_SECONDS
 
     async def _get_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
         user_commission = await fetch_user_commission(client)
@@ -76,7 +76,7 @@ class BondProvider:
         logger.info(f"Subscribed to {len(bonds)} bonds")
 
         try:
-            async with asyncio.timeout(self._settings.BOND_REFRESH_INTERVAL_SECONDS):
+            async with asyncio.timeout(self._bond_refresh_interval_seconds):
                 async for marketdata in client.market_data_stream.market_data_stream(
                     request_iterator()
                 ):

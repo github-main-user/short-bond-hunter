@@ -8,6 +8,7 @@ def normalize_quotation(money: MoneyValue | Quotation) -> float:
     return money.units + (money.nano / 1e9)
 
 
+# TODO: move it out of here
 def filter_bonds(bonds: list[Bond], maximum_days: int) -> list[Bond]:
     now = datetime.now(tz=timezone.utc).date()
     return [

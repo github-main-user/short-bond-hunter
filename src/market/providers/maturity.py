@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from t_tech.invest import AsyncClient, OperationType
 from t_tech.invest.schemas import OperationsStreamRequest
 
+from config import Settings
 from src.market.api import fetch_bond_by_figi, fetch_operations
 from src.market.domain import MaturityEvent, MaturityEventType
 from src.market.utils import normalize_quotation
@@ -24,9 +25,9 @@ def _determine_event_type(operation_type: OperationType):
 
 
 class RealtimeMaturityProvider:
-    def __init__(self, token: str, account_id: str):
-        self._token = token
+    def __init__(self, account_id: str, settings: Settings):
         self._account_id = account_id
+        self._token = settings.TINVEST_TOKEN
 
     async def stream(self):
         async with AsyncClient(self._token) as client:
@@ -53,9 +54,9 @@ class RealtimeMaturityProvider:
 
 
 class DailyMissedMaturityProvider:
-    def __init__(self, token: str, account_id: str):
-        self._token = token
+    def __init__(self, account_id: str, settings: Settings):
         self._account_id = account_id
+        self._token = settings.TINVEST_TOKEN
 
     async def stream(self):
         while True:
