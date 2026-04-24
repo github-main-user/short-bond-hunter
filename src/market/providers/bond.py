@@ -24,7 +24,7 @@ class BondProvider:
         self._token = token
         self._settings = settings
 
-    async def _get_tradable_bonds(client: AsyncServices) -> list[EnrichedBond]:
+    async def _get_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
         user_commission = await fetch_user_commission(client)
         raw_bonds = await fetch_raw_bonds(client)
         logger.info(f"Got {len(raw_bonds)} bonds")
