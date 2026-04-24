@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 from t_tech.invest import AsyncClient, OperationType
 from t_tech.invest.schemas import OperationsStreamRequest
 
-from market.api import fetch_bond_by_figi, fetch_operations
-from market.domain import MaturityEvent, MaturityEventType
-from market.utils import normalize_quotation
+from src.market.api import fetch_bond_by_figi, fetch_operations
+from src.market.domain import MaturityEvent, MaturityEventType
+from src.market.utils import normalize_quotation
 
 logger = logging.getLogger(__name__)
 

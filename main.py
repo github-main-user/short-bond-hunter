@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from src.logging import setup_logging
-from src.market import start_market_streaming_session
+from src.market import start_market_session
 from src.stats import generate_statistics, init_db
 
 
@@ -20,7 +20,7 @@ def main(args: argparse.Namespace) -> None:
     logging.info("Starting market streaming session")
 
     try:
-        asyncio.run(start_market_streaming_session())
+        asyncio.run(start_market_session())
     except KeyboardInterrupt:
         pass
 
