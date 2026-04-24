@@ -25,6 +25,7 @@ class BondPurchase(Base):
     __tablename__ = "bond_purchases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    bond_name: Mapped[str]
     bond_figi: Mapped[str]
     bond_ticker: Mapped[str]
     quantity: Mapped[int]
@@ -43,16 +44,16 @@ class BondMaturity(Base):
     __tablename__ = "bond_maturities"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    operation_id: Mapped[str] = mapped_column(unique=True)
-    bond_figi: Mapped[str]
+    bond_name: Mapped[str]
+    bond_figi: Mapped[str] = mapped_column(unique=True)
     bond_ticker: Mapped[str]
     tmon_price_at_maturity: Mapped[float | None]
     tmon_price_at_money_received: Mapped[float | None]
-    principal_received: Mapped[float]
+    principal_received: Mapped[float | None]
     coupon_received: Mapped[float | None]
     matured_at: Mapped[datetime]
     money_received_at: Mapped[datetime]
 
     @property
     def money_received(self) -> float:
-        return self.principal_received + (self.coupon_received or 0)
+        return (self.principal_received or 0) + (self.coupon_received or 0)
