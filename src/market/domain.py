@@ -1,10 +1,27 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import StrEnum
 from typing import Self
 
 from t_tech.invest import Bond, OrderBook
 
 from .utils import normalize_quotation
+
+
+class MaturityEventType(StrEnum):
+    REPAYMENT = "REPAYMENT"
+    COUPON = "COUPON"
+
+
+@dataclass
+class MaturityEvent:
+    event_type: MaturityEventType
+    bond_name: str
+    bond_figi: str
+    bond_ticker: str
+    payment: float
+    date: datetime
+    is_missed: bool
 
 
 @dataclass

@@ -1,33 +1,15 @@
 import asyncio
 import logging
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from enum import StrEnum
 
 from t_tech.invest import AsyncClient, OperationType
 from t_tech.invest.schemas import OperationsStreamRequest
 
 from market.api import fetch_bond_by_figi, fetch_operations
+from market.domain import MaturityEvent, MaturityEventType
 from market.utils import normalize_quotation
-from src.market.api import fetch_bond_by_figi
 
 logger = logging.getLogger(__name__)
-
-
-class MaturityEventType(StrEnum):
-    REPAYMENT = "REPAYMENT"
-    COUPON = "COUPON"
-
-
-@dataclass
-class MaturityEvent:
-    event_type: MaturityEventType
-    bond_name: str
-    bond_figi: str
-    bond_ticker: str
-    payment: float
-    date: datetime
-    is_missed: bool
 
 
 def _determine_event_type(operation_type: OperationType):
