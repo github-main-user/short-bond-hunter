@@ -16,11 +16,9 @@ class MaturityEventType(StrEnum):
 @dataclass
 class MaturityEvent:
     event_type: MaturityEventType
-    bond_name: str
     bond_figi: str
-    bond_ticker: str
     payment: float
-    date: datetime
+    operation_date: datetime
     is_missed: bool
 
 

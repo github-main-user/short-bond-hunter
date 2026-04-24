@@ -47,7 +47,7 @@ class RealtimeMaturityProvider:
                     bond_figi=operation.figi,
                     bond_ticker=operation.ticker,
                     payment=normalize_quotation(operation.payment),
-                    date=operation.date,
+                    operation_date=operation.date,
                     is_missed=False,
                 )
 
@@ -82,7 +82,7 @@ class DailyMissedMaturityProvider:
                         bond_figi=operation.figi,
                         bond_ticker=bond.ticker,
                         payment=normalize_quotation(operation.payment),
-                        date=operation.date,
+                        operation_date=operation.date,
                         is_missed=True,
                     )
 
