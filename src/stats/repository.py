@@ -43,35 +43,57 @@ class StatsRepository:
             )
             session.commit()
 
-    def is_maturity_recorded(self, operation_id: str) -> bool:
+    def is_repayment_exists(self, figi: str) -> bool:
         with SessionLocal() as session:
-            return session.query(
-                session.query(BondMaturity)
-                .filter_by(operation_id=operation_id)
-                .exists()
-            ).scalar()
+            record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
+            return record is not None and record.principal_received is not None
 
-    def save_maturity(
+    def is_coupon_exists(self, figi: str) -> bool:
+        with SessionLocal() as session:
+            record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
+            return record is not None and record.coupon_received is not None
+
+    def create_repayment(
         self,
-        operation_id: str,
-        figi: str,
-        ticker: str,
-        tmon_price_at_maturity: float | None,
-        tmon_price_at_money_received: float | None,
+        bond_name: str,
+        bond_figi: str,
+        bond_ticker: str,
+        tmon_price_at_maturity: float,
+        tmon_price_at_money_received: float,
         principal_received: float,
-        coupon_received: float | None,
         matured_at: datetime,
         money_received_at: datetime,
     ) -> None:
         with SessionLocal() as session:
             session.add(
                 BondMaturity(
-                    operation_id=operation_id,
-                    bond_figi=figi,
-                    bond_ticker=ticker,
+                    bond_name=bond_name,
+                    bond_figi=bond_figi,
+                    bond_ticker=bond_ticker,
                     tmon_price_at_maturity=tmon_price_at_maturity,
                     tmon_price_at_money_received=tmon_price_at_money_received,
                     principal_received=principal_received,
+                    matured_at=matured_at,
+                    money_received_at=money_received_at,
+                )
+            )
+            session.commit()
+
+    def create_coupon(
+        self,
+        bond_name: str,
+        bond_figi: str,
+        bond_ticker: str,
+        coupon_received: float,
+        matured_at: datetime,
+        money_received_at: datetime,
+    ) -> None:
+        with SessionLocal() as session:
+            session.add(
+                BondMaturity(
+                    bond_name=bond_name,
+                    bond_figi=bond_figi,
+                    bond_ticker=bond_ticker,
                     coupon_received=coupon_received,
                     matured_at=matured_at,
                     money_received_at=money_received_at,
@@ -79,21 +101,26 @@ class StatsRepository:
             )
             session.commit()
 
-    def update_maturity_coupon(
-        self, figi: str, coupon_received: float
-    ) -> tuple[str, float, float] | None:
+    def update_repayment(
+        self, figi: str, principal_received: float | None = None
+    ) -> None:
         with SessionLocal() as session:
-            record = (
-                session.query(BondMaturity)
-                .filter_by(bond_figi=figi)
-                .filter(BondMaturity.coupon_received.is_(None))
-                .first()
-            )
-            if record is None:
-                return None
-            record.coupon_received = coupon_received
-            session.commit()
-            return record.bond_ticker, record.principal_received, coupon_received
+            record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
+            if record:
+                record.principal_received = principal_received
+                session.commit()
+
+    def update_coupon(
+        self,
+        figi: str,
+        coupon_received: float | None = None,
+    ) -> None:
+        with SessionLocal() as session:
+            record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
+            if record:
+                if coupon_received is not None:
+                    record.coupon_received = coupon_received
+                session.commit()
 
     def get_all_purchases(self) -> list[BondPurchase]:
         with SessionLocal() as session:
