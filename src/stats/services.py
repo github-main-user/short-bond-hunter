@@ -1,7 +1,7 @@
 import logging
 from typing import cast
 
-from .repository import StatsRepository
+from .repositories import StatsRepository
 
 logger = logging.getLogger(__name__)
 
