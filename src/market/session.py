@@ -37,11 +37,11 @@ async def start_market_session() -> None:
             async for bond in BondProvider(settings).stream():
                 await process_bond(client, bond, purchase_repo, account_id)
 
-        async def maturity_loop():
+        async def realtime_maturity_loop():
             async for event in RealtimeMaturityProvider(account_id, settings).stream():
                 await process_maturity(client, maturity_repo, event)
 
-        async def missed_loop():
+        async def missed_maturity_loop():
             async for event in DailyMissedMaturityProvider(
                 account_id, settings
             ).stream():
@@ -49,6 +49,6 @@ async def start_market_session() -> None:
 
         await asyncio.gather(
             _with_retry(bond_loop),
-            _with_retry(maturity_loop),
-            _with_retry(missed_loop),
+            _with_retry(realtime_maturity_loop),
+            _with_retry(missed_maturity_loop),
         )
