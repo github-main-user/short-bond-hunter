@@ -1,17 +1,14 @@
 import logging
 from datetime import datetime
 
-from src.stats.database import SessionLocal
-from src.stats.models import BondMaturity, BondPurchase, RiskLevel
-
 from .database import SessionLocal
-from .models import BondMaturity, BondPurchase
+from .models import BondMaturity, BondPurchase, RiskLevel
 
 logger = logging.getLogger(__name__)
 
 
-class StatsRepository:
-    def save_purchase(
+class PurchaseRepository:
+    def create(
         self,
         bond_figi: str,
         bond_ticker: str,
@@ -43,6 +40,12 @@ class StatsRepository:
             )
             session.commit()
 
+    def get_all(self) -> list[BondPurchase]:
+        with SessionLocal() as session:
+            return session.query(BondPurchase).all()
+
+
+class MaturityRepository:
     def is_repayment_exists(self, figi: str) -> bool:
         with SessionLocal() as session:
             record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
@@ -122,10 +125,6 @@ class StatsRepository:
                     record.coupon_received = coupon_received
                 session.commit()
 
-    def get_all_purchases(self) -> list[BondPurchase]:
-        with SessionLocal() as session:
-            return session.query(BondPurchase).all()
-
-    def get_all_maturities(self) -> list[BondMaturity]:
+    def get_all(self) -> list[BondMaturity]:
         with SessionLocal() as session:
             return session.query(BondMaturity).all()

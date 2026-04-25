@@ -2,11 +2,11 @@ from t_tech.invest.async_services import AsyncServices
 
 from src.market.api import fetch_bond_by_figi, fetch_tmon_etf_price_at
 from src.market.domain import MaturityEvent, MaturityEventType
-from src.stats import StatsRepository
+from src.stats import MaturityRepository
 
 
 async def _process_repayment(
-    client: AsyncServices, repo: StatsRepository, event: MaturityEvent
+    client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
 ):
     if repo.is_repayment_exists(event.bond_figi):
         return
@@ -48,7 +48,7 @@ async def _process_repayment(
 
 
 async def _process_coupon(
-    client: AsyncServices, repo: StatsRepository, event: MaturityEvent
+    client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
 ):
     if repo.is_coupon_exists(event.bond_figi):
         return
@@ -87,6 +87,6 @@ _EVENT_TYPE_TO_FUNC = {
 
 
 async def process_maturity(
-    client: AsyncServices, repo: StatsRepository, event: MaturityEvent
+    client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
 ):
     await _EVENT_TYPE_TO_FUNC[event.event_type](client, repo, event)

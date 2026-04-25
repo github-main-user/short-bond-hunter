@@ -1,16 +1,17 @@
 import logging
-from typing import cast
 
-from .repositories import StatsRepository
+from .repositories import MaturityRepository, PurchaseRepository
+
 
 logger = logging.getLogger(__name__)
 
 
 def generate_statistics():
-    repo = cast(StatsRepository, StatsRepository())
+    purchase_repo = PurchaseRepository()
+    maturity_repo = MaturityRepository()
 
-    purchases = repo.get_all_purchases()
-    maturities = repo.get_all_maturities()
+    purchases = purchase_repo.get_all()
+    maturities = maturity_repo.get_all()
 
     ticker_to_maturity = {m.bond_ticker: m for m in maturities}
 

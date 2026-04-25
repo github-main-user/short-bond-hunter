@@ -14,7 +14,7 @@ from src.market.api import (
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_purchase_notification
 from src.market.utils import normalize_quotation
-from src.stats import StatsRepository
+from src.stats import PurchaseRepository
 from src.telegram import TelegramNotConfiguredError, send_telegram_message
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ async def _calculate_purchase_quantity(
 async def process_bond(
     client: AsyncServices,
     bond: EnrichedBond,
-    repo: StatsRepository,
+    repo: PurchaseRepository,
     account_id: str,
 ) -> None:
     logger.info(
@@ -117,7 +117,7 @@ async def process_bond(
     real_buy_price = buy_price + (bond.commission * quantity_to_buy)
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
-    repo.save_purchase(
+    repo.create(
         bond_figi=bond.figi,
         bond_ticker=bond.ticker,
         quantity=quantity_to_buy,
