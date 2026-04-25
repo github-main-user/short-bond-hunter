@@ -1,8 +1,15 @@
+import logging
+
+from aiohttp import ClientError
 from t_tech.invest.async_services import AsyncServices
 
+from market.messages import compose_coupon_notification, compose_repayment_notification
 from src.market.api import fetch_bond_by_figi, fetch_tmon_etf_price_at
 from src.market.domain import MaturityEvent, MaturityEventType
 from src.stats import MaturityRepository
+from src.telegram import TelegramNotConfiguredError, send_telegram_message
+
+logger = logging.getLogger(__name__)
 
 
 async def _process_repayment(
@@ -37,14 +44,14 @@ async def _process_repayment(
             money_received_at=event.operation_date,
         )
 
-    # message = compose_maturity_notification(
-    #     bond.ticker, bond.name, principal_received, coupon_received, is_missed
-    # )
-    # logger.info(message)
-    # try:
-    #     await send_telegram_message(message)
-    # except (TelegramNotConfiguredError, ClientError) as e:
-    #     logger.error(f"Failed to send telegram message: {e}")
+    message = compose_repayment_notification(
+        bond.ticker, bond.name, event.payment, event.is_missed
+    )
+    logger.info(message)
+    try:
+        await send_telegram_message(message)
+    except (TelegramNotConfiguredError, ClientError) as e:
+        logger.error(f"Failed to send telegram message: {e}")
 
 
 async def _process_coupon(
@@ -70,14 +77,14 @@ async def _process_coupon(
             money_received_at=event.operation_date,
         )
 
-    # message = compose_maturity_notification(
-    #     bond.ticker, bond.name, principal_received, coupon_received, is_missed
-    # )
-    # logger.info(message)
-    # try:
-    #     await send_telegram_message(message)
-    # except (TelegramNotConfiguredError, ClientError) as e:
-    #     logger.error(f"Failed to send telegram message: {e}")
+    message = compose_coupon_notification(
+        bond.ticker, bond.name, event.payment, event.is_missed
+    )
+    logger.info(message)
+    try:
+        await send_telegram_message(message)
+    except (TelegramNotConfiguredError, ClientError) as e:
+        logger.error(f"Failed to send telegram message: {e}")
 
 
 _EVENT_TYPE_TO_FUNC = {

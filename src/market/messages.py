@@ -1,31 +1,23 @@
 from src.market.domain import EnrichedBond
 
 
-def compose_maturity_notification(
-    ticker: str,
-    bond_name: str,
-    principal: float,
-    coupon: float | None,
-    is_missed: bool = False,
-) -> str:
-    lines = [
-        f"`{ticker}` matured{' (missed)' if is_missed else ''}",
-        f'Name: "{bond_name}"',
-        f"Principal: {principal:.2f}₽",
-    ]
-    if coupon is not None:
-        lines.append(f"Coupon: {coupon:.2f}₽")
-        lines.append(f"Total: {principal + coupon:.2f}₽")
-    return "\n".join(lines)
-
-
-def compose_late_coupon_notification(
-    ticker: str, principal: float, coupon: float
+def compose_repayment_notification(
+    bond_ticker: str, bond_name: str, payment: float, is_missed: bool
 ) -> str:
     return (
-        f"`{ticker}` late coupon received\n"
-        f"Coupon: {coupon:.2f}₽\n"
-        f"Total: {principal + coupon:.2f}₽"
+        f"Got repayment for `{bond_ticker}` {' (missed)' if is_missed else ''}\n"
+        f'Name: "{bond_name}"\n'
+        f"Payment: {payment:.2f}₽"
+    )
+
+
+def compose_coupon_notification(
+    bond_ticker: str, bond_name: str, payment: float, is_missed: bool
+) -> str:
+    return (
+        f"Got coupon for `{bond_ticker}` {' (missed)' if is_missed else ''}\n"
+        f'Name: "{bond_name}"\n'
+        f"Payment: {payment:.2f}₽"
     )
 
 
