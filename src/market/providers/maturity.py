@@ -1,12 +1,15 @@
 import asyncio
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
+from typing import override
 
-from t_tech.invest import AsyncClient, OperationType
-from t_tech.invest.schemas import OperationsStreamRequest
+from t_tech.invest import AsyncClient, Operation, OperationType
+from t_tech.invest.schemas import OperationData, OperationsStreamRequest
 
 from src.config import Settings
-from src.market.api import fetch_bond_by_figi, fetch_operations
+from src.market.api import fetch_operations
 from src.market.domain import MaturityEvent, MaturityEventType
 from src.market.utils import normalize_quotation
 
@@ -24,63 +27,61 @@ def _determine_event_type(operation_type: OperationType):
     return event_type
 
 
-class RealtimeMaturityProvider:
+class BaseMaturityProvider(ABC):
     def __init__(self, account_id: str, settings: Settings):
         self._account_id = account_id
         self._token = settings.TINVEST_TOKEN
 
+    def _process_operation(self, operation: Operation | OperationData, is_missed: bool):
+        op_type = (
+            operation.operation_type
+            if isinstance(operation, Operation)
+            else operation.type
+        )
+        event_type = _determine_event_type(op_type)
+
+        if not event_type:
+            return None
+
+        return MaturityEvent(
+            event_type=event_type,
+            bond_figi=operation.figi,
+            payment=normalize_quotation(operation.payment),
+            operation_date=operation.date,
+            is_missed=is_missed,
+        )
+
+    @abstractmethod
+    async def stream(self) -> AsyncGenerator[MaturityEvent]:
+        yield  # type: ignore
+
+
+class RealtimeMaturityProvider(BaseMaturityProvider):
+    @override
     async def stream(self):
         async with AsyncClient(self._token) as client:
             request = OperationsStreamRequest(accounts=[self._account_id])
             async for response in client.operations_stream.operations_stream(request):
                 if not response.operation:
                     continue
-                operation = response.operation
 
-                event_type = _determine_event_type(operation.type)
-
-                if not event_type:
-                    continue
-
-                yield MaturityEvent(
-                    event_type=event_type,
-                    bond_figi=operation.figi,
-                    payment=normalize_quotation(operation.payment),
-                    operation_date=operation.date,
-                    is_missed=False,
-                )
+                event = self._process_operation(response.operation, is_missed=False)
+                if event:
+                    yield event
 
 
-class DailyMissedMaturityProvider:
-    def __init__(self, account_id: str, settings: Settings):
-        self._account_id = account_id
-        self._token = settings.TINVEST_TOKEN
-
+class DailyMissedMaturityProvider(BaseMaturityProvider):
+    @override
     async def stream(self):
         while True:
             async with AsyncClient(self._token) as client:
                 since = datetime.now(tz=timezone.utc) - timedelta(days=2)
                 operations = await fetch_operations(client, self._account_id, since)
-
-                if not operations:
-                    logger.info("No missed maturities found")
+                logger.info(f"Got {len(operations)} operations for past 2 days")
 
                 for operation in operations:
-                    event_type = _determine_event_type(operation.operation_type)
-
-                    if not event_type:
-                        continue
-
-                    bond = await fetch_bond_by_figi(client, operation.figi)
-                    if not bond:
-                        continue
-
-                    yield MaturityEvent(
-                        event_type=event_type,
-                        bond_figi=operation.figi,
-                        payment=normalize_quotation(operation.payment),
-                        operation_date=operation.date,
-                        is_missed=True,
-                    )
+                    event = self._process_operation(operation, is_missed=True)
+                    if event:
+                        yield event
 
             await asyncio.sleep(24 * 60 * 60)
