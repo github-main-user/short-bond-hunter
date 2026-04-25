@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from t_tech.invest import AsyncClient, OperationType
 from t_tech.invest.schemas import OperationsStreamRequest
 
-from config import Settings
+from src.config import Settings
 from src.market.api import fetch_bond_by_figi, fetch_operations
 from src.market.domain import MaturityEvent, MaturityEventType
 from src.market.utils import normalize_quotation
