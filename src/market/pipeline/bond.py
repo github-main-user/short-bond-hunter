@@ -86,7 +86,7 @@ async def _calculate_purchase_quantity(
 async def process_bond(
     client: AsyncServices,
     bond: EnrichedBond,
-    stats_repo: StatsRepository,
+    repo: StatsRepository,
     account_id: str,
 ) -> None:
     logger.info(
@@ -117,18 +117,18 @@ async def process_bond(
     real_buy_price = buy_price + (bond.commission * quantity_to_buy)
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
-    stats_repo.save_purchase(  # TODO: pass by key
-        bond.figi,
-        bond.ticker,
-        quantity_to_buy,
-        bond.nominal,
-        bond.current_price,
-        bond.aci_value,
-        bond.commission_percent,
-        real_buy_price / quantity_to_buy,
-        bond.coupons_sum,
-        bond.risk_level,
-        tmon_price,
+    repo.save_purchase(
+        bond_figi=bond.figi,
+        bond_ticker=bond.ticker,
+        quantity=quantity_to_buy,
+        nominal=bond.nominal,
+        price=bond.current_price,
+        aci_value=bond.aci_value,
+        commission_percent=bond.commission_percent,
+        real_price=real_buy_price / quantity_to_buy,
+        coupons_sum=bond.coupons_sum,
+        risk_level=bond.risk_level,
+        tmon_price=tmon_price,
     )
 
     remaining_balance = await fetch_account_balance_rub(client, account_id)

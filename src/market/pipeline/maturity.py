@@ -22,17 +22,19 @@ async def _process_repayment(
     )
 
     if repo.is_coupon_exists(event.bond_figi):
-        repo.update_repayment(event.bond_figi, event.payment)
+        repo.update_repayment(
+            bond_figi=event.bond_figi, principal_received=event.payment
+        )
     else:
         repo.create_repayment(
-            bond.name,
-            event.bond_figi,
-            bond.ticker,
-            tmon_price_at_maturity,
-            tmon_price_at_money_received,
-            event.payment,
-            bond.maturity_date,
-            event.operation_date,
+            bond_name=bond.name,
+            bond_figi=event.bond_figi,
+            bond_ticker=bond.ticker,
+            tmon_price_at_maturity=tmon_price_at_maturity,
+            tmon_price_at_money_received=tmon_price_at_money_received,
+            principal_received=event.payment,
+            matured_at=bond.maturity_date,
+            money_received_at=event.operation_date,
         )
 
     # message = compose_maturity_notification(
@@ -57,15 +59,15 @@ async def _process_coupon(
         return
 
     if repo.is_repayment_exists(event.bond_figi):
-        repo.update_coupon(event.bond_figi, event.payment)
+        repo.update_coupon(bond_figi=event.bond_figi, coupon_received=event.payment)
     else:
         repo.create_coupon(
-            bond.name,
-            event.bond_figi,
-            bond.ticker,
-            event.payment,
-            bond.maturity_date,
-            event.operation_date,
+            bond_name=bond.name,
+            bond_figi=event.bond_figi,
+            bond_ticker=bond.ticker,
+            coupon_received=event.payment,
+            matured_at=bond.maturity_date,
+            money_received_at=event.operation_date,
         )
 
     # message = compose_maturity_notification(

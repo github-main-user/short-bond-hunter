@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 class StatsRepository:
     def save_purchase(
         self,
-        figi: str,
-        ticker: str,
+        bond_figi: str,
+        bond_ticker: str,
         quantity: int,
         nominal: float,
         price: float,
@@ -28,8 +28,8 @@ class StatsRepository:
         with SessionLocal() as session:
             session.add(
                 BondPurchase(
-                    bond_figi=figi,
-                    bond_ticker=ticker,
+                    bond_figi=bond_figi,
+                    bond_ticker=bond_ticker,
                     quantity=quantity,
                     nominal=nominal,
                     price=price,
@@ -102,21 +102,21 @@ class StatsRepository:
             session.commit()
 
     def update_repayment(
-        self, figi: str, principal_received: float | None = None
+        self, bond_figi: str, principal_received: float | None = None
     ) -> None:
         with SessionLocal() as session:
-            record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
+            record = session.query(BondMaturity).filter_by(bond_figi=bond_figi).first()
             if record:
                 record.principal_received = principal_received
                 session.commit()
 
     def update_coupon(
         self,
-        figi: str,
+        bond_figi: str,
         coupon_received: float | None = None,
     ) -> None:
         with SessionLocal() as session:
-            record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
+            record = session.query(BondMaturity).filter_by(bond_figi=bond_figi).first()
             if record:
                 if coupon_received is not None:
                     record.coupon_received = coupon_received
