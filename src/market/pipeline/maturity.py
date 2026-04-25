@@ -3,9 +3,12 @@ import logging
 from aiohttp import ClientError
 from t_tech.invest.async_services import AsyncServices
 
-from market.messages import compose_coupon_notification, compose_repayment_notification
 from src.market.api import fetch_bond_by_figi, fetch_tmon_etf_price_at
 from src.market.domain import MaturityEvent, MaturityEventType
+from src.market.messages import (
+    compose_coupon_notification,
+    compose_repayment_notification,
+)
 from src.stats import MaturityRepository
 from src.telegram import TelegramNotConfiguredError, send_telegram_message
 
