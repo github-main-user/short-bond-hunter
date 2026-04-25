@@ -33,18 +33,16 @@ async def start_market_session() -> None:
         account_id = await fetch_account_id(client)
 
         async def bond_loop():
-            async for bond in BondProvider(settings.TINVEST_TOKEN, settings).stream():
+            async for bond in BondProvider(settings).stream():
                 await process_bond(client, bond, stats_repo, account_id)
 
         async def maturity_loop():
-            async for event in RealtimeMaturityProvider(
-                settings.TINVEST_TOKEN, account_id
-            ).stream():
+            async for event in RealtimeMaturityProvider(account_id, settings).stream():
                 await process_maturity(client, stats_repo, event)
 
         async def missed_loop():
             async for event in DailyMissedMaturityProvider(
-                settings.TINVEST_TOKEN, account_id
+                account_id, settings
             ).stream():
                 await process_maturity(client, stats_repo, event)
 
