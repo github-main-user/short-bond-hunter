@@ -74,6 +74,7 @@ class DailyMissedMaturityProvider(BaseMaturityProvider):
     @override
     async def stream(self):
         while True:
+            # TODO: add logs here?
             async with AsyncClient(self._token) as client:
                 since = datetime.now(tz=timezone.utc) - timedelta(days=2)
                 operations = await fetch_operations(client, self._account_id, since)
