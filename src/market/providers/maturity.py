@@ -59,6 +59,7 @@ class BaseMaturityProvider(ABC):
 class RealtimeMaturityProvider(BaseMaturityProvider):
     @override
     async def stream(self):
+        logger.info("Subscribing to realtime maturity provider")
         async with AsyncClient(self._token) as client:
             request = OperationsStreamRequest(accounts=[self._account_id])
             async for response in client.operations_stream.operations_stream(request):
@@ -74,7 +75,7 @@ class DailyMissedMaturityProvider(BaseMaturityProvider):
     @override
     async def stream(self):
         while True:
-            # TODO: add logs here?
+            logger.info("Starting daily maturity fetch")
             async with AsyncClient(self._token) as client:
                 since = datetime.now(tz=timezone.utc) - timedelta(days=2)
                 operations = await fetch_operations(client, self._account_id, since)
