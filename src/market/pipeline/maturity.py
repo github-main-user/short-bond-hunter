@@ -100,7 +100,7 @@ async def process_maturity(
     client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
 ):
     logger.info(
-        f'Processing maturity event of type "{event.event_type.value}'
+        f'Processing maturity event of type "{event.event_type.value}"'
         f' for figi "{event.bond_figi}"'
     )
     await _EVENT_TYPE_TO_FUNC[event.event_type](client, repo, event)
