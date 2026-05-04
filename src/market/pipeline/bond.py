@@ -118,6 +118,7 @@ async def process_bond(
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
     repo.create(
+        bond_name=bond.name,
         bond_figi=bond.figi,
         bond_ticker=bond.ticker,
         quantity=quantity_to_buy,

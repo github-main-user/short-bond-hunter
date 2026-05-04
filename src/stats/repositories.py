@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class PurchaseRepository:
     def create(
         self,
+        bond_name: str,
         bond_figi: str,
         bond_ticker: str,
         quantity: int,
@@ -25,6 +26,7 @@ class PurchaseRepository:
         with SessionLocal() as session:
             session.add(
                 BondPurchase(
+                    bond_name=bond_name,
                     bond_figi=bond_figi,
                     bond_ticker=bond_ticker,
                     quantity=quantity,
