@@ -5,7 +5,8 @@ from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 from typing import override
 
-from t_tech.invest import AsyncClient, Operation, OperationType
+from t_tech.invest import AsyncClient, Operation, OperationState, OperationType
+from t_tech.invest.async_services import AsyncServices
 from t_tech.invest.schemas import OperationData, OperationsStreamRequest
 
 from src.config import Settings
@@ -57,6 +58,25 @@ class BaseMaturityProvider(ABC):
 
 
 class RealtimeMaturityProvider(BaseMaturityProvider):
+    async def _try_resolve_figi_from_parent(
+        self, client: AsyncServices, op: OperationData
+    ) -> str | None:
+        if not op.parent_operation_id:
+            return None
+
+        response = await client.operations.get_operations(
+            account_id=self._account_id,
+            from_=op.date - timedelta(days=2),  # type: ignore
+            to=datetime.now(tz=timezone.utc),
+            state=OperationState.OPERATION_STATE_EXECUTED,
+        )
+
+        for operation in response.operations:
+            if operation.id == op.parent_operation_id:
+                return operation.figi or None
+
+        return None
+
     @override
     async def stream(self):
         logger.info("Subscribing to realtime maturity provider")
@@ -66,7 +86,17 @@ class RealtimeMaturityProvider(BaseMaturityProvider):
                 if not response.operation:
                     continue
 
-                event = self._process_operation(response.operation, is_missed=False)
+                op = response.operation
+
+                if op.type == OperationType.OPERATION_TYPE_COUPON and not op.figi:
+                    op.figi = await self._try_resolve_figi_from_parent(client, op) or ""
+                    if not op.figi:
+                        logger.warning(
+                            f"Couldn't resolve figi for coupon {op.id}, skipping"
+                        )
+                        continue
+
+                event = self._process_operation(op, is_missed=False)
                 if event:
                     yield event
 
