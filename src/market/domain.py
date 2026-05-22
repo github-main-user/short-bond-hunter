@@ -19,7 +19,6 @@ class MaturityEvent:
     bond_figi: str
     payment: float
     operation_date: datetime
-    is_missed: bool
 
 
 @dataclass

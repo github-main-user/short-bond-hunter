@@ -47,9 +47,7 @@ async def _process_repayment(
             money_received_at=event.operation_date,
         )
 
-    message = compose_repayment_notification(
-        bond.ticker, bond.name, event.payment, event.is_missed
-    )
+    message = compose_repayment_notification(bond.ticker, bond.name, event.payment)
     logger.info(message)
     try:
         await send_telegram_message(message)
@@ -80,9 +78,7 @@ async def _process_coupon(
             money_received_at=event.operation_date,
         )
 
-    message = compose_coupon_notification(
-        bond.ticker, bond.name, event.payment, event.is_missed
-    )
+    message = compose_coupon_notification(bond.ticker, bond.name, event.payment)
     logger.info(message)
     try:
         await send_telegram_message(message)

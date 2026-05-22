@@ -1,4 +1,4 @@
 from .bond import BondProvider
-from .maturity import DailyMissedMaturityProvider, RealtimeMaturityProvider
+from .maturity import MaturityProvider
 
-__all__ = ["BondProvider", "DailyMissedMaturityProvider", "RealtimeMaturityProvider"]
+__all__ = ["BondProvider", "MaturityProvider"]

@@ -6,11 +6,7 @@ from t_tech.invest import AsyncClient
 from src.config import settings
 from src.market.api import fetch_account_id
 from src.market.pipeline import process_bond, process_maturity
-from src.market.providers import (
-    BondProvider,
-    DailyMissedMaturityProvider,
-    RealtimeMaturityProvider,
-)
+from src.market.providers import BondProvider, MaturityProvider
 from src.stats import MaturityRepository, PurchaseRepository
 
 logger = logging.getLogger(__name__)
@@ -37,18 +33,11 @@ async def start_market_session() -> None:
             async for bond in BondProvider(settings).stream():
                 await process_bond(client, bond, purchase_repo, account_id)
 
-        async def realtime_maturity_loop():
-            async for event in RealtimeMaturityProvider(account_id, settings).stream():
-                await process_maturity(client, maturity_repo, event)
-
-        async def missed_maturity_loop():
-            async for event in DailyMissedMaturityProvider(
-                account_id, settings
-            ).stream():
+        async def maturity_loop():
+            async for event in MaturityProvider(account_id, settings).stream():
                 await process_maturity(client, maturity_repo, event)
 
         await asyncio.gather(
             _with_retry(bond_loop),
-            _with_retry(realtime_maturity_loop),
-            _with_retry(missed_maturity_loop),
+            _with_retry(maturity_loop),
         )

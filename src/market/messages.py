@@ -2,20 +2,20 @@ from src.market.domain import EnrichedBond
 
 
 def compose_repayment_notification(
-    bond_ticker: str, bond_name: str, payment: float, is_missed: bool
+    bond_ticker: str, bond_name: str, payment: float
 ) -> str:
     return (
-        f"Got repayment for `{bond_ticker}` {' (missed)' if is_missed else ''}\n"
+        f"Got repayment for `{bond_ticker}`\n"
         f'Name: "{bond_name}"\n'
         f"Payment: {payment:.2f}₽"
     )
 
 
 def compose_coupon_notification(
-    bond_ticker: str, bond_name: str, payment: float, is_missed: bool
+    bond_ticker: str, bond_name: str, payment: float
 ) -> str:
     return (
-        f"Got coupon for `{bond_ticker}` {' (missed)' if is_missed else ''}\n"
+        f"Got coupon for `{bond_ticker}`\n"
         f'Name: "{bond_name}"\n'
         f"Payment: {payment:.2f}₽"
     )
