@@ -140,4 +140,4 @@ async def process_bond(
     try:
         await send_telegram_message(message)
     except (TelegramNotConfiguredError, ClientError) as e:
-        logger.warning(f"Failed to send telegram message: {e}")
+        logger.error(f"Failed to send telegram message: {e}")
