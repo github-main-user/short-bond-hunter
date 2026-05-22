@@ -48,12 +48,12 @@ class PurchaseRepository:
 
 
 class MaturityRepository:
-    def is_repayment_exists(self, figi: str) -> bool:
+    def has_principal_payment(self, figi: str) -> bool:
         with SessionLocal() as session:
             record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
             return record is not None and record.principal_received is not None
 
-    def is_coupon_exists(self, figi: str) -> bool:
+    def has_coupon_payment(self, figi: str) -> bool:
         with SessionLocal() as session:
             record = session.query(BondMaturity).filter_by(bond_figi=figi).first()
             return record is not None and record.coupon_received is not None
@@ -107,12 +107,18 @@ class MaturityRepository:
             session.commit()
 
     def update_repayment(
-        self, bond_figi: str, principal_received: float | None = None
+        self,
+        bond_figi: str,
+        principal_received: float,
+        tmon_price_at_maturity: float | None,
+        tmon_price_at_money_received: float | None,
     ) -> None:
         with SessionLocal() as session:
             record = session.query(BondMaturity).filter_by(bond_figi=bond_figi).first()
             if record:
                 record.principal_received = principal_received
+                record.tmon_price_at_maturity = tmon_price_at_maturity
+                record.tmon_price_at_money_received = tmon_price_at_money_received
                 session.commit()
 
     def update_coupon(

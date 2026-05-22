@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def _process_repayment(
     client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
 ):
-    if repo.is_repayment_exists(event.bond_figi):
+    if repo.has_principal_payment(event.bond_figi):
         return
 
     bond = await fetch_bond_by_figi(client, event.bond_figi)
@@ -30,9 +30,12 @@ async def _process_repayment(
         client, event.operation_date
     )
 
-    if repo.is_coupon_exists(event.bond_figi):
+    if repo.has_coupon_payment(event.bond_figi):
         repo.update_repayment(
-            bond_figi=event.bond_figi, principal_received=event.payment
+            bond_figi=event.bond_figi,
+            principal_received=event.payment,
+            tmon_price_at_maturity=tmon_price_at_maturity,
+            tmon_price_at_money_received=tmon_price_at_money_received,
         )
     else:
         repo.create_repayment(
@@ -53,7 +56,7 @@ async def _process_repayment(
 async def _process_coupon(
     client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
 ):
-    if repo.is_coupon_exists(event.bond_figi):
+    if repo.has_coupon_payment(event.bond_figi):
         return
 
     bond = await fetch_bond_by_figi(client, event.bond_figi)
@@ -61,7 +64,7 @@ async def _process_coupon(
     if not bond:
         return
 
-    if repo.is_repayment_exists(event.bond_figi):
+    if repo.has_principal_payment(event.bond_figi):
         repo.update_coupon(bond_figi=event.bond_figi, coupon_received=event.payment)
     else:
         repo.create_coupon(
