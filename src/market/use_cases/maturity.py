@@ -1,6 +1,5 @@
 import logging
 
-from aiohttp import ClientError
 from t_tech.invest.async_services import AsyncServices
 
 from src.market.api import fetch_bond_by_figi, fetch_tmon_etf_price_at
@@ -10,7 +9,7 @@ from src.market.messages import (
     compose_repayment_notification,
 )
 from src.stats import MaturityRepository
-from src.telegram import TelegramNotConfiguredError, send_telegram_message
+from src.telegram import notify
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +47,7 @@ async def _process_repayment(
         )
 
     message = compose_repayment_notification(bond.ticker, bond.name, event.payment)
-    logger.info(message)
-    try:
-        await send_telegram_message(message)
-    except (TelegramNotConfiguredError, ClientError) as e:
-        logger.error(f"Failed to send telegram message: {e}")
+    await notify(message)
 
 
 async def _process_coupon(
@@ -79,11 +74,7 @@ async def _process_coupon(
         )
 
     message = compose_coupon_notification(bond.ticker, bond.name, event.payment)
-    logger.info(message)
-    try:
-        await send_telegram_message(message)
-    except (TelegramNotConfiguredError, ClientError) as e:
-        logger.error(f"Failed to send telegram message: {e}")
+    await notify(message)
 
 
 _EVENT_TYPE_TO_FUNC = {

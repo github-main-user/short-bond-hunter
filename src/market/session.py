@@ -5,8 +5,8 @@ from t_tech.invest import AsyncClient
 
 from src.config import settings
 from src.market.api import fetch_account_id
-from src.market.pipeline import process_bond, process_maturity
 from src.market.providers import BondProvider, MaturityProvider
+from src.market.use_cases import process_bond, process_maturity
 from src.stats import MaturityRepository, PurchaseRepository
 
 logger = logging.getLogger(__name__)

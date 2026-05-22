@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime, timezone
 
-from aiohttp import ClientError
+from t_tech.invest import PortfolioPosition
 from t_tech.invest.async_services import AsyncServices
 
-from src.config import settings
+from src.config import Settings, settings
 from src.market.api import (
     buy_bond,
     fetch_account_balance_rub,
@@ -15,7 +15,7 @@ from src.market.domain import EnrichedBond
 from src.market.messages import compose_purchase_notification
 from src.market.utils import normalize_quotation
 from src.stats import PurchaseRepository
-from src.telegram import TelegramNotConfiguredError, send_telegram_message
+from src.telegram import notify
 
 logger = logging.getLogger(__name__)
 
@@ -42,22 +42,18 @@ def _is_bond_eligible_for_purchase(bond: EnrichedBond) -> bool:
     return True
 
 
-async def _calculate_purchase_quantity(
-    client: AsyncServices, bond: EnrichedBond, account_id: str
+def _compute_purchase_quantity(
+    bond: EnrichedBond,
+    balance: float,
+    existing_position: PortfolioPosition | None,
+    settings: Settings,
 ) -> int:
-    balance = await fetch_account_balance_rub(client, account_id)
-    if not balance:
-        return 0
-
-    existing_bonds = await fetch_existing_bonds(client, account_id)
-    existing_bond = existing_bonds.get(bond.ticker)
-
     quantity_to_buy_single = int(settings.BOND_SUM_MAX_SINGLE // bond.real_price)
 
-    if existing_bond:
+    if existing_position:
         current_value = normalize_quotation(
-            existing_bond.quantity
-        ) * normalize_quotation(existing_bond.current_price)
+            existing_position.quantity
+        ) * normalize_quotation(existing_position.current_price)
         allowed_budget = settings.BOND_SUM_MAX - current_value
     else:
         allowed_budget = settings.BOND_SUM_MAX
@@ -98,7 +94,16 @@ async def process_bond(
     if not _is_bond_eligible_for_purchase(bond):
         return
 
-    quantity_to_buy = await _calculate_purchase_quantity(client, bond, account_id)
+    balance = await fetch_account_balance_rub(client, account_id)
+    if not balance:
+        return
+
+    existing_bonds = await fetch_existing_bonds(client, account_id)
+    existing_position = existing_bonds.get(bond.ticker)
+
+    quantity_to_buy = _compute_purchase_quantity(
+        bond, balance, existing_position, settings
+    )
 
     if quantity_to_buy <= 0:
         logger.info(
@@ -136,8 +141,4 @@ async def process_bond(
     message = compose_purchase_notification(
         bond, quantity_to_buy, real_buy_price, remaining_balance
     )
-    logger.info(message)
-    try:
-        await send_telegram_message(message)
-    except (TelegramNotConfiguredError, ClientError) as e:
-        logger.error(f"Failed to send telegram message: {e}")
+    await notify(message)

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from t_tech.invest import AsyncClient, OperationType
 
