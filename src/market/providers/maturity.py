@@ -13,11 +13,7 @@ from src.market.utils import normalize_quotation
 logger = logging.getLogger(__name__)
 
 
-_ALLOWED_OPERATION_TYPES = (
-    OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL,
-    OperationType.OPERATION_TYPE_COUPON,
-)
-_OPERATION_TYPE_TO_EVENT_TYPE = {
+_OPERATION_TYPE_MAP = {
     OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL: MaturityEventType.REPAYMENT,
     OperationType.OPERATION_TYPE_COUPON: MaturityEventType.COUPON,
 }
@@ -41,11 +37,9 @@ class MaturityProvider:
                 logger.info(f"Got {len(operations)} operations for past 2 days")
 
                 for operation in operations:
-                    op_type = operation.operation_type
-                    if op_type not in _ALLOWED_OPERATION_TYPES:
+                    event_type = _OPERATION_TYPE_MAP.get(operation.operation_type)
+                    if event_type is None:
                         continue
-
-                    event_type = _OPERATION_TYPE_TO_EVENT_TYPE[op_type]
 
                     yield MaturityEvent(
                         event_type=event_type,
