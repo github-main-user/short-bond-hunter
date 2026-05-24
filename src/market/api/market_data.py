@@ -14,7 +14,11 @@ _TMON_FIGI = "TCS70A106DL2"
 async def fetch_tmon_etf_price_at(
     client: AsyncServices, target_time: datetime
 ) -> float | None:
-    now = datetime.now(tz=target_time.tzinfo or timezone.utc)
+    if target_time.tzinfo is None:
+        target_time = target_time.replace(tzinfo=timezone.utc)
+    else:
+        target_time = target_time.astimezone(timezone.utc)
+    now = datetime.now(tz=timezone.utc)
     is_today = target_time.date() == now.date()
 
     if is_today:
