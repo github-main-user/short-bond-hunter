@@ -113,7 +113,7 @@ def print_per_purchase(df: pd.DataFrame) -> None:
     ax = df.plot(
         x="received_at",
         y=["bond_yield", "tmon_yield"],
-        kind="bar",  # or "bar" if few data points
+        kind="bar",
     )
     ax.set_xlabel("received at")
     ax.set_ylabel("annual yield %")
