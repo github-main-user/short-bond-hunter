@@ -1,98 +1,118 @@
 import logging
+from typing import cast
 
+import pandas as pd
+
+from .models import BondMaturity, BondPurchase
 from .repositories import MaturityRepository, PurchaseRepository
-
 
 logger = logging.getLogger(__name__)
 
 
-def generate_statistics():
-    purchase_repo = PurchaseRepository()
-    maturity_repo = MaturityRepository()
+def calculate_per_purchase(
+    purchases: list[BondPurchase],
+    maturities: list[BondMaturity],
+) -> pd.DataFrame:
+    figi_to_maturity = {m.bond_figi: m for m in maturities}
 
-    purchases = purchase_repo.get_all()
-    maturities = maturity_repo.get_all()
-
-    ticker_to_maturity = {m.bond_ticker: m for m in maturities}
-
-    total_returned_bond = 0
-    total_returned_tmon = 0
-
-    for purchase in purchases:
-        # assert if purchase.real_price and calculated manually real price don't match
-
-        related_maturity = ticker_to_maturity.get(purchase.bond_ticker)
-        if related_maturity is None:
-            # logger.info(f"No related maturity found for bond: {purchase.bond_ticker}")
+    rows = []
+    for p in purchases:
+        m = figi_to_maturity.get(p.bond_figi)
+        if m is None or m.principal_received is None:
             continue
-
-        maturity_quantity = related_maturity.principal_received / purchase.nominal
-        return_per_bond = related_maturity.money_received / maturity_quantity
-
         if (
-            purchase.tmon_price_at_buy is None
-            or related_maturity.tmon_price_at_maturity is None
-            or related_maturity.tmon_price_at_money_received is None
+            p.tmon_price_at_buy is None
+            or m.tmon_price_at_maturity is None
+            or m.tmon_price_at_money_received is None
         ):
-            # logger.info("TMON's price is None")
             continue
 
-        # tmon per bond
-        quantity_on_tmon = (
-            purchase.real_price * purchase.quantity // purchase.tmon_price_at_buy
+        rows.append(
+            {
+                "ticker": p.bond_ticker,
+                "name": p.bond_name,
+                "qty": p.quantity,
+                "real_price": p.real_price,
+                "tmon_buy": p.tmon_price_at_buy,
+                "tmon_maturity": m.tmon_price_at_maturity,
+                "bought_at": p.bought_at.date(),
+                "received_at": m.money_received_at.date(),
+                "return_per_bond": m.money_received
+                / (m.principal_received / p.nominal),
+            }
         )
 
-        # TODO: use money_received_at instead of matured_at
-        days = (related_maturity.matured_at.date() - purchase.bought_at.date()).days
-        bond_annual_yield = (
-            ((return_per_bond - purchase.real_price) / purchase.real_price)
-            * (365.25 / days)
-            * 100
-            if days > 0 and purchase.real_price > 0
-            else 0.0
-        )
-        tmon_annual_yield = (
-            (
-                (related_maturity.tmon_price_at_maturity - purchase.tmon_price_at_buy)
-                / purchase.tmon_price_at_buy
-            )
-            * (365.25 / days)
-            * 100
-            if days > 0 and purchase.tmon_price_at_buy > 0
-            else 0.0
-        )
-        returned_bond = (return_per_bond - purchase.real_price) * purchase.quantity
-        returned_tmon = (
-            related_maturity.tmon_price_at_maturity - purchase.tmon_price_at_buy
-        ) * quantity_on_tmon
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
 
+    df["days"] = (
+        pd.to_datetime(df["received_at"]) - pd.to_datetime(df["bought_at"])
+    ).dt.days
+    df["qty_tmon"] = df["real_price"] * df["qty"] // df["tmon_buy"]
+    df["returned_bond"] = (df["return_per_bond"] - df["real_price"]) * df["qty"]
+    df["returned_tmon"] = (df["tmon_maturity"] - df["tmon_buy"]) * df["qty_tmon"]
+    df["bond_yield"] = (
+        (df["return_per_bond"] - df["real_price"])
+        / df["real_price"]
+        * (365.25 / df["days"])
+        * 100
+    ).where((df["days"] > 0) & (df["real_price"] > 0), 0.0)
+    df["tmon_yield"] = (
+        (df["tmon_maturity"] - df["tmon_buy"])
+        / df["tmon_buy"]
+        * (365.25 / df["days"])
+        * 100
+    ).where((df["days"] > 0) & (df["tmon_buy"] > 0), 0.0)
+
+    return df
+
+
+def print_per_purchase(df: pd.DataFrame) -> None:
+    if df.empty:
+        print("no data to display")
+        return
+
+    for _, r in df.iterrows():
         print(
-            f"\n{purchase.bond_ticker} (x{purchase.quantity}):"
-            f" {purchase.bought_at.date()} -> {related_maturity.matured_at.date()}"
-            f" ({days} days)"
+            f'\n"{r["name"]}" ({r["ticker"]}) (x{r["qty"]}):'
+            f" {r['bought_at']} -> {r['received_at']}"
+            f" ({r['days']} days)"
             "\nBOND:"
             " ("
-            f"spent: {purchase.real_price * purchase.quantity:.2f}₽,"
-            f" return: {return_per_bond * purchase.quantity:.2f}₽,"
-            f" total returned: {returned_bond:.2f}₽,"
-            f" annual yield: {bond_annual_yield:.2f}%"
+            f"spent: {r['real_price'] * r['qty']:.2f}₽,"
+            f" return: {r['return_per_bond'] * r['qty']:.2f}₽,"
+            f" total returned: {r['returned_bond']:.2f}₽,"
+            f" annual yield: {r['bond_yield']:.2f}%"
             ")"
             "\nTMON:"
             " ("
-            f"spent: {related_maturity.tmon_price_at_maturity * quantity_on_tmon:.2f}₽,"
-            f" return: {purchase.tmon_price_at_buy * quantity_on_tmon:.2f}₽,"
-            f" total returned: {returned_tmon:.2f}₽,"
-            f" annual yield: {tmon_annual_yield:.2f}%"
-            ")",
+            f"spent: {r['tmon_maturity'] * r['qty_tmon']:.2f}₽,"
+            f" return: {r['tmon_buy'] * r['qty_tmon']:.2f}₽,"
+            f" total returned: {r['returned_tmon']:.2f}₽,"
+            f" annual yield: {r['tmon_yield']:.2f}%"
+            ")"
         )
-        total_returned_bond += returned_bond
-        total_returned_tmon += returned_tmon
 
     print(
         "\n"
-        + "=" * 40
+        + "=" * 50
         + (
-            f"\nTotal returned BOND: {total_returned_bond:.2f}₽"
-            f"\nTotal returned TMON: {total_returned_tmon:.2f}₽"
+            f"\nTotal returned BOND: {df['returned_bond'].sum():.2f}₽"
+            f"\nTotal returned TMON: {df['returned_tmon'].sum():.2f}₽"
+        )
+        + "\n"
+        + "=" * 50
+        + (
+            f"\nAverage BOND yield: {df['bond_yield'].mean():.2f}%"
+            f"\nAverage TMON yield: {df['tmon_yield'].mean():.2f}%"
         )
     )
+
+
+def generate_statistics():
+    purchase_repo = cast(PurchaseRepository, PurchaseRepository())
+    maturity_repo = cast(MaturityRepository, MaturityRepository())
+
+    df = calculate_per_purchase(purchase_repo.get_all(), maturity_repo.get_all())
+    print_per_purchase(df)
