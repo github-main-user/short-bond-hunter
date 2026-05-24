@@ -121,9 +121,104 @@ def print_per_purchase(df: pd.DataFrame) -> None:
     plt.show()
 
 
+# def generate_statistics():
+#     purchase_repo = cast(PurchaseRepository, PurchaseRepository())
+#     maturity_repo = cast(MaturityRepository, MaturityRepository())
+#
+#     df = calculate_per_purchase(purchase_repo.get_all(), maturity_repo.get_all())
+#     print_per_purchase(df)
+
+
+def calculate_per_month(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    enriched = df.assign(
+        month=pd.to_datetime(df["received_at"]).dt.to_period("M"),
+        spent_bond=df["real_price"] * df["qty"],
+        spent_tmon=df["tmon_buy"] * df["qty_tmon"],
+    )
+    enriched["bond_days_w"] = enriched["days"] * enriched["spent_bond"]
+    enriched["tmon_days_w"] = enriched["days"] * enriched["spent_tmon"]
+    monthly = enriched.groupby("month", as_index=True)[
+        [
+            "spent_bond",
+            "spent_tmon",
+            "returned_bond",
+            "returned_tmon",
+            "bond_days_w",
+            "tmon_days_w",
+        ]
+    ].sum()
+    monthly = monthly.asfreq("M", fill_value=0)
+    bond_avg_days = (monthly["bond_days_w"] / monthly["spent_bond"]).where(
+        monthly["spent_bond"] > 0, 0.0
+    )
+    tmon_avg_days = (monthly["tmon_days_w"] / monthly["spent_tmon"]).where(
+        monthly["spent_tmon"] > 0, 0.0
+    )
+    monthly["bond_yield"] = (
+        monthly["returned_bond"]
+        / monthly["spent_bond"]
+        * (365.25 / bond_avg_days)
+        * 100
+    ).where((monthly["spent_bond"] > 0) & (bond_avg_days > 0), 0.0)
+    monthly["tmon_yield"] = (
+        monthly["returned_tmon"]
+        / monthly["spent_tmon"]
+        * (365.25 / tmon_avg_days)
+        * 100
+    ).where((monthly["spent_tmon"] > 0) & (tmon_avg_days > 0), 0.0)
+    monthly = monthly.drop(columns=["bond_days_w", "tmon_days_w"])
+    monthly.index = monthly.index.astype(str)
+    return monthly
+
+
+def print_per_month(monthly: pd.DataFrame) -> None:
+    if monthly.empty:
+        print("no data to display")
+        return
+
+    for month, r in monthly.iterrows():
+        print(
+            f"\n{month}:"
+            f"\nBOND: spent {r['spent_bond']:.2f}₽,"
+            f" return {r['returned_bond']:.2f}₽"
+            f" (annual yield {r['bond_yield']:.2f}%)"
+            f"\nTMON: spent {r['spent_tmon']:.2f}₽,"
+            f" return {r['returned_tmon']:.2f}₽"
+            f" (annual yield {r['tmon_yield']:.2f}%)"
+        )
+
+    total_spent_bond = monthly["spent_bond"].sum()
+    total_spent_tmon = monthly["spent_tmon"].sum()
+    total_ret_bond = monthly["returned_bond"].sum()
+    total_ret_tmon = monthly["returned_tmon"].sum()
+    print(
+        "\n"
+        + "=" * 50
+        + (
+            f"\nTotal spent BOND: {total_spent_bond:.2f}₽,"
+            f" returned: {total_ret_bond:.2f}₽"
+            f"\nTotal spent TMON: {total_spent_tmon:.2f}₽,"
+            f" returned: {total_ret_tmon:.2f}₽"
+        )
+    )
+
+    ax = monthly.plot(
+        y=["returned_bond", "returned_tmon"],
+        kind="bar",
+    )
+    ax.set_xlabel("month")
+    ax.set_ylabel("return ₽")
+    plt.tight_layout()
+    plt.show()
+
+
 def generate_statistics():
     purchase_repo = cast(PurchaseRepository, PurchaseRepository())
     maturity_repo = cast(MaturityRepository, MaturityRepository())
 
     df = calculate_per_purchase(purchase_repo.get_all(), maturity_repo.get_all())
-    print_per_purchase(df)
+    monthly = calculate_per_month(df)
+    print_per_month(monthly)
