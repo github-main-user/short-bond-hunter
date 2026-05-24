@@ -1,6 +1,7 @@
 import logging
 from typing import cast
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from .models import BondMaturity, BondPurchase
@@ -34,7 +35,7 @@ def calculate_per_purchase(
                 "qty": p.quantity,
                 "real_price": p.real_price,
                 "tmon_buy": p.tmon_price_at_buy,
-                "tmon_maturity": m.tmon_price_at_maturity,
+                "tmon_received": m.tmon_price_at_money_received,
                 "bought_at": p.bought_at.date(),
                 "received_at": m.money_received_at.date(),
                 "return_per_bond": m.money_received
@@ -51,7 +52,7 @@ def calculate_per_purchase(
     ).dt.days
     df["qty_tmon"] = df["real_price"] * df["qty"] // df["tmon_buy"]
     df["returned_bond"] = (df["return_per_bond"] - df["real_price"]) * df["qty"]
-    df["returned_tmon"] = (df["tmon_maturity"] - df["tmon_buy"]) * df["qty_tmon"]
+    df["returned_tmon"] = (df["tmon_received"] - df["tmon_buy"]) * df["qty_tmon"]
     df["bond_yield"] = (
         (df["return_per_bond"] - df["real_price"])
         / df["real_price"]
@@ -59,7 +60,7 @@ def calculate_per_purchase(
         * 100
     ).where((df["days"] > 0) & (df["real_price"] > 0), 0.0)
     df["tmon_yield"] = (
-        (df["tmon_maturity"] - df["tmon_buy"])
+        (df["tmon_received"] - df["tmon_buy"])
         / df["tmon_buy"]
         * (365.25 / df["days"])
         * 100
@@ -87,8 +88,8 @@ def print_per_purchase(df: pd.DataFrame) -> None:
             ")"
             "\nTMON:"
             " ("
-            f"spent: {r['tmon_maturity'] * r['qty_tmon']:.2f}₽,"
-            f" return: {r['tmon_buy'] * r['qty_tmon']:.2f}₽,"
+            f"spent: {r['tmon_buy'] * r['qty_tmon']:.2f}₽,"
+            f" return: {r['tmon_received'] * r['qty_tmon']:.2f}₽,"
             f" total returned: {r['returned_tmon']:.2f}₽,"
             f" annual yield: {r['tmon_yield']:.2f}%"
             ")"
@@ -108,6 +109,16 @@ def print_per_purchase(df: pd.DataFrame) -> None:
             f"\nAverage TMON yield: {df['tmon_yield'].mean():.2f}%"
         )
     )
+
+    ax = df.plot(
+        x="received_at",
+        y=["bond_yield", "tmon_yield"],
+        kind="bar",  # or "bar" if few data points
+    )
+    ax.set_xlabel("received at")
+    ax.set_ylabel("annual yield %")
+    plt.tight_layout()
+    plt.show()
 
 
 def generate_statistics():
