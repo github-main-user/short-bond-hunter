@@ -22,6 +22,7 @@ class PurchaseRepository:
         coupons_sum: float,
         risk_level: int,
         tmon_price: float | None,
+        expected_maturity_date: datetime,
     ) -> None:
         with SessionLocal() as session:
             session.add(
@@ -38,6 +39,7 @@ class PurchaseRepository:
                     coupons_sum=coupons_sum,
                     risk_level=RiskLevel.from_int(risk_level),
                     tmon_price_at_buy=tmon_price,
+                    expected_maturity_date=expected_maturity_date,
                 )
             )
             session.commit()

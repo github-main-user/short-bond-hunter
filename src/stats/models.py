@@ -35,6 +35,7 @@ class BondPurchase(Base):
     coupons_sum: Mapped[float]
     risk_level: Mapped[RiskLevel]
     tmon_price_at_buy: Mapped[float | None]
+    expected_maturity_date: Mapped[datetime]
     bought_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(tz=timezone.utc)
     )

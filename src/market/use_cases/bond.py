@@ -135,6 +135,7 @@ async def process_bond(
         coupons_sum=bond.coupons_sum,
         risk_level=bond.risk_level,
         tmon_price=tmon_price,
+        expected_maturity_date=bond.maturity_date,
     )
 
     remaining_balance = await fetch_account_balance_rub(client, account_id)
