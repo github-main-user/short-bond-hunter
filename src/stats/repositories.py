@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 from .database import SessionLocal
-from .models import BondMaturity, BondPurchase, RiskLevel
+from .models import BondMaturity, BondPurchase, RiskLevel, PurchaseStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class PurchaseRepository:
         risk_level: int,
         tmon_price: float | None,
         expected_maturity_date: datetime,
+        strategy: PurchaseStrategy,
     ) -> None:
         with SessionLocal() as session:
             session.add(
@@ -40,6 +41,7 @@ class PurchaseRepository:
                     risk_level=RiskLevel.from_int(risk_level),
                     tmon_price_at_buy=tmon_price,
                     expected_maturity_date=expected_maturity_date,
+                    strategy=strategy,
                 )
             )
             session.commit()
