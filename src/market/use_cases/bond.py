@@ -15,6 +15,7 @@ from src.market.domain import EnrichedBond
 from src.market.messages import compose_purchase_notification
 from src.market.utils import normalize_quotation
 from src.stats import PurchaseRepository
+from src.stats.models import PurchaseStrategy
 from src.telegram import notify
 
 logger = logging.getLogger(__name__)
@@ -26,12 +27,14 @@ def _is_bond_eligible_for_purchase(bond: EnrichedBond) -> bool:
         return False
 
     if not (
-        settings.ANNUAL_YIELD_MIN <= bond.ask_annual_yield <= settings.ANNUAL_YIELD_MAX
+        settings.ASK_ANNUAL_YIELD_MIN
+        <= bond.ask_annual_yield
+        <= settings.ASK_ANNUAL_YIELD_MAX
     ):
         logger.info(
             f"Ineligible bond {bond.ticker}: annual yield "
             f"({bond.ask_annual_yield:.2f}%) is not in the allowed range "
-            f"({settings.ANNUAL_YIELD_MIN}%, {settings.ANNUAL_YIELD_MAX}%)"
+            f"({settings.ASK_ANNUAL_YIELD_MIN}%, {settings.ASK_ANNUAL_YIELD_MAX}%)"
         )
         return False
 
@@ -48,15 +51,17 @@ def _compute_purchase_quantity(
     existing_position: PortfolioPosition | None,
     settings: Settings,
 ) -> int:
-    quantity_to_buy_single = int(settings.BOND_SUM_MAX_SINGLE // bond.ask_real_price)
+    quantity_to_buy_single = int(
+        settings.ASK_BOND_SUM_MAX_PER_PURCHASE // bond.ask_real_price
+    )
 
     if existing_position:
         current_value = normalize_quotation(
             existing_position.quantity
         ) * normalize_quotation(existing_position.current_price)
-        allowed_budget = settings.BOND_SUM_MAX - current_value
+        allowed_budget = settings.MAX_SUM_PER_BOND - current_value
     else:
-        allowed_budget = settings.BOND_SUM_MAX
+        allowed_budget = settings.MAX_SUM_PER_BOND
 
     quantity_allowed_to_buy = 0
     if allowed_budget > 0:
@@ -136,6 +141,7 @@ async def process_bond(
         risk_level=bond.risk_level,
         tmon_price=tmon_price,
         expected_maturity_date=bond.maturity_date,
+        strategy=PurchaseStrategy.ASK_SNIPER,
     )
 
     remaining_balance = await fetch_account_balance_rub(client, account_id)
