@@ -26,17 +26,17 @@ def _is_bond_eligible_for_purchase(bond: EnrichedBond) -> bool:
         return False
 
     if not (
-        settings.ANNUAL_YIELD_MIN <= bond.annual_yield <= settings.ANNUAL_YIELD_MAX
+        settings.ANNUAL_YIELD_MIN <= bond.ask_annual_yield <= settings.ANNUAL_YIELD_MAX
     ):
         logger.info(
             f"Ineligible bond {bond.ticker}: annual yield "
-            f"({bond.annual_yield:.2f}%) is not in the allowed range "
+            f"({bond.ask_annual_yield:.2f}%) is not in the allowed range "
             f"({settings.ANNUAL_YIELD_MIN}%, {settings.ANNUAL_YIELD_MAX}%)"
         )
         return False
 
-    if bond.real_price <= 0:
-        logger.info(f"Ineligible bond {bond.ticker}: `real_price` is not positive")
+    if bond.ask_real_price <= 0:
+        logger.info(f"Ineligible bond {bond.ticker}: `ask_real_price` is not positive")
         return False
 
     return True
@@ -48,7 +48,7 @@ def _compute_purchase_quantity(
     existing_position: PortfolioPosition | None,
     settings: Settings,
 ) -> int:
-    quantity_to_buy_single = int(settings.BOND_SUM_MAX_SINGLE // bond.real_price)
+    quantity_to_buy_single = int(settings.BOND_SUM_MAX_SINGLE // bond.ask_real_price)
 
     if existing_position:
         current_value = normalize_quotation(
@@ -60,9 +60,9 @@ def _compute_purchase_quantity(
 
     quantity_allowed_to_buy = 0
     if allowed_budget > 0:
-        quantity_allowed_to_buy = int(allowed_budget // bond.real_price)
+        quantity_allowed_to_buy = int(allowed_budget // bond.ask_real_price)
 
-    quantity_available_to_buy = int(balance // bond.real_price)
+    quantity_available_to_buy = int(balance // bond.ask_real_price)
 
     qty = min(
         quantity_to_buy_single,
@@ -86,8 +86,8 @@ async def process_bond(
     account_id: str,
 ) -> None:
     logger.info(
-        f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, {bond.annual_yield:.2f}%) | "
-        f"cost: {bond.current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {bond.commission:.2f}₽ = {bond.real_price:.2f}₽ | "
+        f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, {bond.ask_annual_yield:.2f}%) | "
+        f"cost: {bond.ask_current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {bond.ask_commission:.2f}₽ = {bond.ask_real_price:.2f}₽ | "
         f"return: {bond.nominal:.2f}₽ + {bond.coupons_sum:.2f}₽ = {bond.full_return:.2f}₽"
     )
 
@@ -119,7 +119,7 @@ async def process_bond(
     # calculating real_buy_price using our commission here, instead of using commission
     # provided by response itself - because in response's commission is always 0,
     # broker itself calculates commission in separate operation
-    real_buy_price = buy_price + (bond.commission * quantity_to_buy)
+    real_buy_price = buy_price + (bond.ask_commission * quantity_to_buy)
 
     tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
     repo.create(
@@ -128,7 +128,7 @@ async def process_bond(
         bond_ticker=bond.ticker,
         quantity=quantity_to_buy,
         nominal=bond.nominal,
-        price=bond.current_price,
+        price=bond.ask_current_price,
         aci_value=bond.aci_value,
         commission_percent=bond.commission_percent,
         real_price=real_buy_price / quantity_to_buy,
