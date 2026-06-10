@@ -1,19 +1,26 @@
 import logging
+from datetime import datetime, timezone
 
-from t_tech.invest import PortfolioPosition
+from t_tech.invest import OrderExecutionReportStatus, PortfolioPosition
 from t_tech.invest.async_services import AsyncServices
+from t_tech.invest.schemas import OrderStateStreamOrderState
 
 from src.config import Settings, settings
 from src.market.api import (
     cancel_bid_order,
     fetch_account_balance_rub,
     fetch_existing_bonds,
+    fetch_tmon_etf_price_at,
     place_bid_order,
     replace_bid_order,
 )
 from src.market.domain import EnrichedBond
+from src.market.messages import compose_bid_fill_notification
 from src.market.order_registry import ActiveBidOrder, OrderRegistry
 from src.market.utils import normalize_quotation
+from src.stats import PurchaseRepository
+from src.stats.models import PurchaseStrategy
+from src.telegram import notify
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +67,22 @@ async def _place(
     account_id: str,
     bond: EnrichedBond,
     registry: OrderRegistry,
+    purchase_repo: PurchaseRepository,
     qty: int,
     price_percent: float,
 ) -> None:
     response = await place_bid_order(client, account_id, bond.figi, qty, price_percent)
     if response is None:
         return
+    if response.lots_executed > 0:
+        await _record_fill(
+            client,
+            account_id,
+            bond,
+            purchase_repo,
+            response.lots_executed,
+            price_percent,
+        )
     registry.add(
         ActiveBidOrder(
             order_id=response.order_id,
@@ -82,6 +99,7 @@ async def _replace(
     account_id: str,
     bond: EnrichedBond,
     registry: OrderRegistry,
+    purchase_repo: PurchaseRepository,
     old: ActiveBidOrder,
     qty: int,
     price_percent: float,
@@ -91,6 +109,15 @@ async def _replace(
     )
     if response is None:
         return
+    if response.lots_executed > 0:
+        await _record_fill(
+            client,
+            account_id,
+            bond,
+            purchase_repo,
+            response.lots_executed,
+            price_percent,
+        )
     registry.remove(bond.figi, old.order_id)
     registry.add(
         ActiveBidOrder(
@@ -119,7 +146,11 @@ async def _cancel(
 
 
 async def process_bid_for_orderbook(
-    client: AsyncServices, bond: EnrichedBond, registry: OrderRegistry, account_id: str
+    client: AsyncServices,
+    bond: EnrichedBond,
+    registry: OrderRegistry,
+    purchase_repo: PurchaseRepository,
+    account_id: str,
 ) -> None:
     if bond.ticker in settings.BLACK_LIST_TICKERS:
         return
@@ -170,12 +201,104 @@ async def process_bid_for_orderbook(
         return
 
     if our_order is None:
-        await _place(client, account_id, bond, registry, target_qty, target_price)
+        await _place(
+            client,
+            account_id,
+            bond,
+            registry,
+            purchase_repo,
+            target_qty,
+            target_price,
+        )
         return
 
     if our_order.price == target_price and our_order.quantity == target_qty:
         return
 
     await _replace(
-        client, account_id, bond, registry, our_order, target_qty, target_price
+        client,
+        account_id,
+        bond,
+        registry,
+        purchase_repo,
+        our_order,
+        target_qty,
+        target_price,
     )
+
+
+async def _record_fill(
+    client: AsyncServices,
+    account_id: str,
+    bond: EnrichedBond,
+    purchase_repo: PurchaseRepository,
+    lots_filled: int,
+    price_percent: float,
+) -> None:
+    tmon_price = await fetch_tmon_etf_price_at(
+        client, datetime.now(tz=timezone.utc)
+    )
+    purchase_repo.create(
+        bond_name=bond.name,
+        bond_figi=bond.figi,
+        bond_ticker=bond.ticker,
+        quantity=lots_filled,
+        nominal=bond.nominal,
+        price=bond.current_price_at(price_percent),
+        aci_value=bond.aci_value,
+        commission_percent=bond.commission_percent,
+        real_price=bond.real_price_at(price_percent),
+        coupons_sum=bond.coupons_sum,
+        risk_level=bond.risk_level,
+        tmon_price=tmon_price,
+        expected_maturity_date=bond.maturity_date,
+        strategy=PurchaseStrategy.BID_WAITER,
+    )
+    remaining = await fetch_account_balance_rub(client, account_id)
+    await notify(
+        compose_bid_fill_notification(bond, lots_filled, price_percent, remaining)
+    )
+
+
+async def process_order_state(
+    client: AsyncServices,
+    event: OrderStateStreamOrderState,
+    registry: OrderRegistry,
+    purchase_repo: PurchaseRepository,
+    figi_to_bond: dict[str, EnrichedBond],
+    account_id: str,
+) -> None:
+    if not registry.has_order_id(event.order_id):
+        return
+
+    existing = registry.find_by_order_id(event.order_id)
+    if existing is None:
+        return
+
+    delta_lots = existing.quantity - event.lots_left
+    if delta_lots > 0:
+        bond = figi_to_bond.get(existing.figi)
+        if bond is None:
+            logger.warning(
+                f"Filled order {event.order_id} for unknown figi {existing.figi}; "
+                f"skipping purchase record"
+            )
+        else:
+            await _record_fill(
+                client,
+                account_id,
+                bond,
+                purchase_repo,
+                delta_lots,
+                existing.price,
+            )
+
+    status = event.execution_report_status
+    if status in (
+        OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL,
+        OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_CANCELLED,
+        OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_REJECTED,
+    ):
+        registry.remove(existing.figi, event.order_id)
+    elif status == OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL:
+        registry.set_quantity(existing.figi, event.order_id, event.lots_left)
