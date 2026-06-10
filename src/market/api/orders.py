@@ -116,16 +116,15 @@ async def cancel_bid_order(
 async def fetch_active_bid_orders(
     client: AsyncServices, account_id: str
 ) -> list[OrderState]:
-    response = await client.orders.get_orders(
-        account_id=account_id,
-        execution_status=[
-            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
-            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
-        ],
-    )
+    response = await client.orders.get_orders(account_id=account_id)
     return [
         order
         for order in response.orders
-        if order.direction == OrderDirection.ORDER_DIRECTION_BUY
+        if order.execution_report_status
+        in (
+            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
+            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
+        )
+        and order.direction == OrderDirection.ORDER_DIRECTION_BUY
         and order.order_type == OrderType.ORDER_TYPE_LIMIT
     ]
