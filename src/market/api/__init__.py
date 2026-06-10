@@ -1,7 +1,7 @@
 from .accounts import fetch_account_id, fetch_user_commission
 from .instruments import fetch_bond_by_figi, fetch_coupons_sum, fetch_raw_bonds
 from .market_data import fetch_tmon_etf_price_at
-from .operations import fetch_coupon_operation_for_repayment, fetch_operations
+from .operations import fetch_operations
 from .orders import (
     buy_at_ask,
     cancel_bid_order,
@@ -18,7 +18,6 @@ __all__ = [
     "fetch_account_id",
     "fetch_active_bid_orders",
     "fetch_bond_by_figi",
-    "fetch_coupon_operation_for_repayment",
     "fetch_coupons_sum",
     "fetch_bond_positions",
     "fetch_operations",
