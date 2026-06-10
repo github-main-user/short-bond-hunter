@@ -1,33 +1,32 @@
 import logging
 
-from t_tech.invest.async_services import AsyncServices
-
 from src.market.api import fetch_bond_by_figi, fetch_tmon_etf_price_at
+from src.market.context import MarketContext
 from src.market.domain import MaturityEvent, MaturityEventType
 from src.market.messages import (
     compose_coupon_notification,
     compose_repayment_notification,
 )
-from src.stats import MaturityRepository
 from src.telegram import notify
 
 logger = logging.getLogger(__name__)
 
 
-async def _process_repayment(
-    client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
-):
+async def _process_repayment(ctx: MarketContext, event: MaturityEvent):
+    repo = ctx.maturity_repo
     if repo.has_principal_payment(event.bond_figi):
         return
 
-    bond = await fetch_bond_by_figi(client, event.bond_figi)
+    bond = await fetch_bond_by_figi(ctx.client, event.bond_figi)
 
     if not bond:
         return
 
-    tmon_price_at_maturity = await fetch_tmon_etf_price_at(client, bond.maturity_date)
+    tmon_price_at_maturity = await fetch_tmon_etf_price_at(
+        ctx.client, bond.maturity_date
+    )
     tmon_price_at_money_received = await fetch_tmon_etf_price_at(
-        client, event.operation_date
+        ctx.client, event.operation_date
     )
 
     if repo.has_coupon_payment(event.bond_figi):
@@ -53,13 +52,12 @@ async def _process_repayment(
     await notify(message)
 
 
-async def _process_coupon(
-    client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
-):
+async def _process_coupon(ctx: MarketContext, event: MaturityEvent):
+    repo = ctx.maturity_repo
     if repo.has_coupon_payment(event.bond_figi):
         return
 
-    bond = await fetch_bond_by_figi(client, event.bond_figi)
+    bond = await fetch_bond_by_figi(ctx.client, event.bond_figi)
 
     if not bond:
         return
@@ -86,11 +84,9 @@ _EVENT_TYPE_TO_FUNC = {
 }
 
 
-async def process_maturity(
-    client: AsyncServices, repo: MaturityRepository, event: MaturityEvent
-):
+async def process_maturity(ctx: MarketContext, event: MaturityEvent):
     logger.info(
         f'Processing maturity event of type "{event.event_type.value}"'
         f' for figi "{event.bond_figi}"'
     )
-    await _EVENT_TYPE_TO_FUNC[event.event_type](client, repo, event)
+    await _EVENT_TYPE_TO_FUNC[event.event_type](ctx, event)
