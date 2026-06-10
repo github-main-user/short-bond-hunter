@@ -4,12 +4,10 @@ import logging
 
 from src.logging import setup_logging
 from src.market import start_market_session
-from src.stats import init_db
 
 
 def main() -> None:
     setup_logging()
-    init_db()
     logging.info("Starting market streaming session")
 
     try:
