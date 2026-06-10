@@ -58,7 +58,7 @@ def _compute_bid_quantity(
     )
 
     reserved_rub = sum(
-        bond.real_price_at(o.price_percent) * o.quantity
+        bond.at(o.price_percent).real_price * o.quantity
         for o in ctx.bid_registry.bids_for(bond.figi)
     )
     effective_balance = balance + reserved_rub
@@ -131,16 +131,16 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
     if target_price is None:
         return
 
-    yield_at_target = bond.annual_yield_at(target_price)
+    target = bond.at(target_price)
 
     if not (
         settings.BID_MIN_ANNUAL_YIELD
-        <= yield_at_target
+        <= target.annual_yield
         <= settings.BID_MAX_ANNUAL_YIELD
     ):
         if our_order:
             logger.info(
-                f"Yield {yield_at_target:.2f}% for {bond.ticker} is outside the bid range "
+                f"Yield {target.annual_yield:.2f}% for {bond.ticker} is outside the bid range "
                 f"({settings.BID_MIN_ANNUAL_YIELD}%, {settings.BID_MAX_ANNUAL_YIELD}%); cancelling"
             )
             await _cancel_bid(ctx, bond, our_order)
@@ -153,12 +153,11 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
     existing_positions = await fetch_bond_positions(ctx.client, ctx.account_id)
     existing_position = existing_positions.get(bond.figi)
 
-    target_real_price = bond.real_price_at(target_price)
-    if target_real_price <= 0:
+    if target.real_price <= 0:
         return
 
     target_qty = _compute_bid_quantity(
-        bond, target_real_price, balance, existing_position, ctx, settings
+        bond, target.real_price, balance, existing_position, ctx, settings
     )
 
     if target_qty == 0:
@@ -183,6 +182,7 @@ async def _record_fill(
     lots_filled: int,
     price_percent: float,
 ) -> None:
+    view = bond.at(price_percent)
     tmon_price = await fetch_tmon_etf_price_at(
         ctx.client, datetime.now(tz=timezone.utc)
     )
@@ -192,10 +192,10 @@ async def _record_fill(
         bond_ticker=bond.ticker,
         quantity=lots_filled,
         nominal=bond.nominal,
-        price=bond.current_price_at(price_percent),
+        price=view.current_price,
         aci_value=bond.aci_value,
         commission_percent=bond.commission_percent,
-        real_price=bond.real_price_at(price_percent),
+        real_price=view.real_price,
         coupons_sum=bond.coupons_sum,
         risk_level=bond.risk_level,
         tmon_price=tmon_price,
@@ -203,9 +203,7 @@ async def _record_fill(
         strategy=PurchaseStrategy.BID_WAITER,
     )
     remaining = await fetch_account_balance_rub(ctx.client, ctx.account_id)
-    await notify(
-        compose_bid_fill_notification(bond, lots_filled, price_percent, remaining)
-    )
+    await notify(compose_bid_fill_notification(bond, view, lots_filled, remaining))
 
 
 async def process_bid_order_state(

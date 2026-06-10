@@ -116,11 +116,11 @@ class BondProvider:
                         )
                         continue
 
-                    old_ask = bond.ask_real_price
-                    old_bid = bond.bid_real_price
+                    old_ask = bond.ask.real_price
+                    old_bid = bond.bid.real_price
                     bond.update(marketdata.orderbook)
 
-                    if old_ask != bond.ask_real_price or old_bid != bond.bid_real_price:
+                    if old_ask != bond.ask.real_price or old_bid != bond.bid.real_price:
                         yield bond
         except TimeoutError:
             logger.info("Bonds update interval reached. Re-fetching...")

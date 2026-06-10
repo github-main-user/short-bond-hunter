@@ -28,18 +28,18 @@ def _is_eligible_for_snipe(bond: EnrichedBond) -> bool:
 
     if not (
         settings.ASK_MIN_ANNUAL_YIELD
-        <= bond.ask_annual_yield
+        <= bond.ask.annual_yield
         <= settings.ASK_MAX_ANNUAL_YIELD
     ):
         logger.info(
             f"Ineligible bond {bond.ticker}: annual yield "
-            f"({bond.ask_annual_yield:.2f}%) is not in the allowed range "
+            f"({bond.ask.annual_yield:.2f}%) is not in the allowed range "
             f"({settings.ASK_MIN_ANNUAL_YIELD}%, {settings.ASK_MAX_ANNUAL_YIELD}%)"
         )
         return False
 
-    if bond.ask_real_price <= 0:
-        logger.info(f"Ineligible bond {bond.ticker}: `ask_real_price` is not positive")
+    if bond.ask.real_price <= 0:
+        logger.info(f"Ineligible bond {bond.ticker}: ask real price is not positive")
         return False
 
     return True
@@ -52,7 +52,7 @@ def _compute_purchase_quantity(
     bid_registry: BidOrderRegistry,
     settings: Settings,
 ) -> int:
-    qty_by_purchase_cap = int(settings.ASK_MAX_SUM_PER_PURCHASE // bond.ask_real_price)
+    qty_by_purchase_cap = int(settings.ASK_MAX_SUM_PER_PURCHASE // bond.ask.real_price)
 
     if existing_position:
         current_value = normalize_quotation(
@@ -62,16 +62,16 @@ def _compute_purchase_quantity(
         current_value = 0.0
 
     waiter_reserved = sum(
-        bond.real_price_at(o.price_percent) * o.quantity
+        bond.at(o.price_percent).real_price * o.quantity
         for o in bid_registry.bids_for(bond.figi)
     )
     allowed_budget = settings.TOTAL_MAX_SUM_PER_BOND - current_value - waiter_reserved
 
     qty_by_shared_cap = 0
     if allowed_budget > 0:
-        qty_by_shared_cap = int(allowed_budget // bond.ask_real_price)
+        qty_by_shared_cap = int(allowed_budget // bond.ask.real_price)
 
-    qty_by_balance = int(balance // bond.ask_real_price)
+    qty_by_balance = int(balance // bond.ask.real_price)
 
     qty = min(
         qty_by_purchase_cap,
@@ -89,9 +89,10 @@ def _compute_purchase_quantity(
 
 
 async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
+    ask = bond.ask
     logger.info(
-        f"Ask sniper: processing {bond.ticker} ({bond.days_to_maturity}d, {bond.ask_annual_yield:.2f}%) | "
-        f"cost: {bond.ask_current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {bond.ask_commission:.2f}₽ = {bond.ask_real_price:.2f}₽ | "
+        f"Ask sniper: processing {bond.ticker} ({bond.days_to_maturity}d, {ask.annual_yield:.2f}%) | "
+        f"cost: {ask.current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {ask.commission:.2f}₽ = {ask.real_price:.2f}₽ | "
         f"return: {bond.nominal:.2f}₽ + {bond.coupons_sum:.2f}₽ = {bond.full_return:.2f}₽"
     )
 
@@ -123,7 +124,7 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     # calculating real_buy_price using our commission here, instead of using commission
     # provided by response itself - because in response's commission is always 0,
     # broker itself calculates commission in separate operation
-    real_buy_price = buy_price + (bond.ask_commission * quantity_to_buy)
+    real_buy_price = buy_price + (ask.commission * quantity_to_buy)
 
     tmon_price = await fetch_tmon_etf_price_at(
         ctx.client, datetime.now(tz=timezone.utc)
@@ -134,7 +135,7 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
         bond_ticker=bond.ticker,
         quantity=quantity_to_buy,
         nominal=bond.nominal,
-        price=bond.ask_current_price,
+        price=ask.current_price,
         aci_value=bond.aci_value,
         commission_percent=bond.commission_percent,
         real_price=real_buy_price / quantity_to_buy,
