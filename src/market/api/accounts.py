@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 async def fetch_account_id(client: AsyncServices) -> str:
     response = await client.users.get_accounts()
     if not response.accounts:
-        logger.error("No accounts found")
+        raise RuntimeError("No accounts found")
 
     return response.accounts[0].id
 
