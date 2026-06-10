@@ -15,7 +15,7 @@ from t_tech.invest import (
 from t_tech.invest.async_services import AsyncServices
 from t_tech.invest.schemas import RiskLevel
 
-from src.config import Settings, settings
+from src.config import settings
 from src.market.api import fetch_coupons_sum, fetch_raw_bonds, fetch_user_commission
 from src.market.domain import EnrichedBond
 
@@ -43,9 +43,7 @@ def _filter_bonds(bonds: list[Bond], maximum_days: int) -> list[Bond]:
 
 
 class BondProvider:
-    def __init__(self, settings: Settings) -> None:
-        self._token = settings.TINVEST_TOKEN
-        self._bond_refresh_interval_seconds = settings.BOND_REFRESH_INTERVAL_SECONDS
+    def __init__(self) -> None:
         self.figi_to_bond: dict[str, EnrichedBond] = {}
 
     async def _get_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
@@ -77,7 +75,7 @@ class BondProvider:
 
     async def stream(self):
         while True:
-            async with AsyncClient(self._token) as client:
+            async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 bonds = await self._get_tradable_bonds(client)
                 async for bond in self._stream_price_updates(client, bonds):
                     yield bond
@@ -100,7 +98,7 @@ class BondProvider:
         logger.info(f"Subscribed to {len(bonds)} bonds")
 
         try:
-            async with asyncio.timeout(self._bond_refresh_interval_seconds):
+            async with asyncio.timeout(settings.BOND_REFRESH_INTERVAL_SECONDS):
                 async for marketdata in client.market_data_stream.market_data_stream(
                     request_iterator()
                 ):

@@ -66,9 +66,9 @@ async def start_market_session() -> None:
             maturity_repo=maturity_repo,
         )
 
-        bond_provider = BondProvider(settings)
-        maturity_provider = MaturityProvider(account_id, settings)
-        order_state_provider = OrderStateProvider(account_id, settings)
+        bond_provider = BondProvider()
+        maturity_provider = MaturityProvider(account_id)
+        order_state_provider = OrderStateProvider(account_id)
 
         async def bond_loop():
             async for bond in bond_provider.stream():
@@ -83,9 +83,7 @@ async def start_market_session() -> None:
                 try:
                     await process_maturity(ctx, event)
                     if event.event_type == MaturityEventType.REPAYMENT:
-                        await refresh_all_bids(
-                            ctx, bond_provider.figi_to_bond.values()
-                        )
+                        await refresh_all_bids(ctx, bond_provider.figi_to_bond.values())
                 except Exception:
                     logger.exception(
                         f"Failed to process maturity event for {event.bond_figi}"

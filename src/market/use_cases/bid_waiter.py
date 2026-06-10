@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from t_tech.invest import OrderExecutionReportStatus, PortfolioPosition
 from t_tech.invest.schemas import OrderStateStreamOrderState
 
-from src.config import Settings, settings
+from src.config import settings
 from src.market.api import (
     cancel_bid_order,
     fetch_account_balance_rub,
@@ -42,7 +42,6 @@ def _compute_bid_quantity(
     balance: float,
     existing_position: PortfolioPosition | None,
     ctx: MarketContext,
-    settings: Settings,
 ) -> int:
     qty_by_bid_cap = int(settings.BID_MAX_SUM_PER_BOND // target_real_price)
 
@@ -157,7 +156,7 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     target_qty = _compute_bid_quantity(
-        bond, target.real_price, balance, existing_position, ctx, settings
+        bond, target.real_price, balance, existing_position, ctx
     )
 
     if target_qty == 0:

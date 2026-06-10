@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from t_tech.invest import PortfolioPosition
 
-from src.config import Settings, settings
+from src.config import settings
 from src.market.api import (
     buy_at_ask,
     fetch_account_balance_rub,
@@ -50,7 +50,6 @@ def _compute_purchase_quantity(
     balance: float,
     existing_position: PortfolioPosition | None,
     bid_registry: BidOrderRegistry,
-    settings: Settings,
 ) -> int:
     qty_by_purchase_cap = int(settings.ASK_MAX_SUM_PER_PURCHASE // bond.ask.real_price)
 
@@ -107,7 +106,7 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     existing_position = existing_bonds.get(bond.figi)
 
     quantity_to_buy = _compute_purchase_quantity(
-        bond, balance, existing_position, ctx.bid_registry, settings
+        bond, balance, existing_position, ctx.bid_registry
     )
 
     if quantity_to_buy <= 0:

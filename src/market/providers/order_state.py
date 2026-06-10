@@ -7,18 +7,17 @@ from t_tech.invest.schemas import (
     OrderStateStreamRequest,
 )
 
-from src.config import Settings
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class OrderStateProvider:
-    def __init__(self, account_id: str, settings: Settings) -> None:
+    def __init__(self, account_id: str) -> None:
         self._account_id = account_id
-        self._token = settings.TINVEST_TOKEN
 
     async def stream(self) -> AsyncGenerator[OrderStateStreamOrderState]:
-        async with AsyncClient(self._token) as client:
+        async with AsyncClient(settings.TINVEST_TOKEN) as client:
             request = OrderStateStreamRequest(accounts=[self._account_id])
             logger.info(
                 f"Subscribed to order state stream for account {self._account_id}"
