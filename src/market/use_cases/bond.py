@@ -2,7 +2,6 @@ import logging
 from datetime import datetime, timezone
 
 from t_tech.invest import PortfolioPosition
-from t_tech.invest.async_services import AsyncServices
 
 from src.config import Settings, settings
 from src.market.api import (
@@ -11,11 +10,11 @@ from src.market.api import (
     fetch_existing_bonds,
     fetch_tmon_etf_price_at,
 )
+from src.market.context import MarketContext
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_purchase_notification
 from src.market.order_registry import OrderRegistry
 from src.market.utils import normalize_quotation
-from src.stats import PurchaseRepository
 from src.stats.models import PurchaseStrategy
 from src.telegram import notify
 
@@ -88,13 +87,7 @@ def _compute_purchase_quantity(
     return qty
 
 
-async def process_bond(
-    client: AsyncServices,
-    bond: EnrichedBond,
-    repo: PurchaseRepository,
-    registry: OrderRegistry,
-    account_id: str,
-) -> None:
+async def process_bond(ctx: MarketContext, bond: EnrichedBond) -> None:
     logger.info(
         f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, {bond.ask_annual_yield:.2f}%) | "
         f"cost: {bond.ask_current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {bond.ask_commission:.2f}₽ = {bond.ask_real_price:.2f}₽ | "
@@ -104,15 +97,15 @@ async def process_bond(
     if not _is_bond_eligible_for_purchase(bond):
         return
 
-    balance = await fetch_account_balance_rub(client, account_id)
+    balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     if not balance:
         return
 
-    existing_bonds = await fetch_existing_bonds(client, account_id)
+    existing_bonds = await fetch_existing_bonds(ctx.client, ctx.account_id)
     existing_position = existing_bonds.get(bond.ticker)
 
     quantity_to_buy = _compute_purchase_quantity(
-        bond, balance, existing_position, registry, settings
+        bond, balance, existing_position, ctx.registry, settings
     )
 
     if quantity_to_buy <= 0:
@@ -121,7 +114,7 @@ async def process_bond(
         )
         return
 
-    buy_price = await buy_bond(client, account_id, bond, quantity_to_buy)
+    buy_price = await buy_bond(ctx.client, ctx.account_id, bond, quantity_to_buy)
 
     if buy_price is None:
         return
@@ -131,8 +124,10 @@ async def process_bond(
     # broker itself calculates commission in separate operation
     real_buy_price = buy_price + (bond.ask_commission * quantity_to_buy)
 
-    tmon_price = await fetch_tmon_etf_price_at(client, datetime.now(tz=timezone.utc))
-    repo.create(
+    tmon_price = await fetch_tmon_etf_price_at(
+        ctx.client, datetime.now(tz=timezone.utc)
+    )
+    ctx.purchase_repo.create(
         bond_name=bond.name,
         bond_figi=bond.figi,
         bond_ticker=bond.ticker,
@@ -149,7 +144,7 @@ async def process_bond(
         strategy=PurchaseStrategy.ASK_SNIPER,
     )
 
-    remaining_balance = await fetch_account_balance_rub(client, account_id)
+    remaining_balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     message = compose_purchase_notification(
         bond, quantity_to_buy, real_buy_price, remaining_balance
     )

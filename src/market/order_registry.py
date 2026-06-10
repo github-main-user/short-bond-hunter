@@ -39,9 +39,6 @@ class OrderRegistry:
             return
         order.quantity = quantity
 
-    def has_order_id(self, order_id: str) -> bool:
-        return any(order_id in bucket for bucket in self._by_figi.values())
-
     def find_by_order_id(self, order_id: str) -> ActiveBidOrder | None:
         for bucket in self._by_figi.values():
             if order_id in bucket:
