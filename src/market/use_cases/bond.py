@@ -102,7 +102,7 @@ async def process_bond(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     existing_bonds = await fetch_existing_bonds(ctx.client, ctx.account_id)
-    existing_position = existing_bonds.get(bond.ticker)
+    existing_position = existing_bonds.get(bond.figi)
 
     quantity_to_buy = _compute_purchase_quantity(
         bond, balance, existing_position, ctx.registry, settings

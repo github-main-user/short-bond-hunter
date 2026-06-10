@@ -12,7 +12,7 @@ async def fetch_existing_bonds(
     client: AsyncServices, account_id: str
 ) -> dict[str, PortfolioPosition]:
     positions = (await client.operations.get_portfolio(account_id=account_id)).positions
-    return {p.ticker: p for p in positions if p.instrument_type == "bond"}
+    return {p.figi: p for p in positions if p.instrument_type == "bond"}
 
 
 async def fetch_account_balance_rub(
