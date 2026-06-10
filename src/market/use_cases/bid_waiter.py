@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterable
 from datetime import datetime, timezone
 
 from t_tech.invest import OrderExecutionReportStatus, PortfolioPosition
@@ -302,3 +303,16 @@ async def process_order_state(
         registry.remove(existing.figi, event.order_id)
     elif status == OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL:
         registry.set_quantity(existing.figi, event.order_id, event.lots_left)
+
+
+async def refresh_all_bids(
+    client: AsyncServices,
+    bonds: Iterable[EnrichedBond],
+    registry: OrderRegistry,
+    purchase_repo: PurchaseRepository,
+    account_id: str,
+) -> None:
+    for bond in list(bonds):
+        await process_bid_for_orderbook(
+            client, bond, registry, purchase_repo, account_id
+        )
