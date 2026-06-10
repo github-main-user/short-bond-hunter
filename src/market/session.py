@@ -26,8 +26,8 @@ async def _with_retry(fn, *args, **kwargs) -> None:
     while True:
         try:
             await fn(*args, **kwargs)
-        except Exception as e:
-            logger.error(f"Unexpected error in {fn.__name__}: {e}")
+        except Exception:
+            logger.exception(f"Unexpected error in {fn.__name__}")
             logger.info("Retrying in 5 minutes...")
             await asyncio.sleep(60 * 5)
 
@@ -72,18 +72,35 @@ async def start_market_session() -> None:
 
         async def bond_loop():
             async for bond in bond_provider.stream():
-                await process_ask_sniper(ctx, bond)
-                await process_bid_waiter(ctx, bond)
+                try:
+                    await process_ask_sniper(ctx, bond)
+                    await process_bid_waiter(ctx, bond)
+                except Exception:
+                    logger.exception(f"Failed to process tick for {bond.ticker}")
 
         async def maturity_loop():
             async for event in maturity_provider.stream():
-                await process_maturity(ctx, event)
-                if event.event_type == MaturityEventType.REPAYMENT:
-                    await refresh_all_bids(ctx, bond_provider.figi_to_bond.values())
+                try:
+                    await process_maturity(ctx, event)
+                    if event.event_type == MaturityEventType.REPAYMENT:
+                        await refresh_all_bids(
+                            ctx, bond_provider.figi_to_bond.values()
+                        )
+                except Exception:
+                    logger.exception(
+                        f"Failed to process maturity event for {event.bond_figi}"
+                    )
 
         async def order_state_loop():
             async for event in order_state_provider.stream():
-                await process_bid_order_state(ctx, event, bond_provider.figi_to_bond)
+                try:
+                    await process_bid_order_state(
+                        ctx, event, bond_provider.figi_to_bond
+                    )
+                except Exception:
+                    logger.exception(
+                        f"Failed to process order state for {event.order_id}"
+                    )
 
         await asyncio.gather(
             _with_retry(bond_loop),
