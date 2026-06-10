@@ -5,11 +5,11 @@ from dataclasses import dataclass
 class ActiveBidOrder:
     order_id: str
     figi: str
-    price: float
+    price_percent: float
     quantity: int
 
 
-class OrderRegistry:
+class BidOrderRegistry:
     def __init__(self) -> None:
         self._by_figi: dict[str, dict[str, ActiveBidOrder]] = {}
 
@@ -29,9 +29,6 @@ class OrderRegistry:
 
     def bids_for(self, figi: str) -> list[ActiveBidOrder]:
         return list(self._by_figi.get(figi, {}).values())
-
-    def reserved_value_for(self, figi: str) -> float:
-        return sum(o.price * o.quantity for o in self.bids_for(figi))
 
     def set_quantity(self, figi: str, order_id: str, quantity: int) -> None:
         order = self.get(figi, order_id)

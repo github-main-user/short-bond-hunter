@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from t_tech.invest.async_services import AsyncServices
 
-from src.market.order_registry import OrderRegistry
+from src.market.bid_order_registry import BidOrderRegistry
 from src.stats import PurchaseRepository
 
 
@@ -10,5 +10,5 @@ from src.stats import PurchaseRepository
 class MarketContext:
     client: AsyncServices
     account_id: str
-    registry: OrderRegistry
+    bid_registry: BidOrderRegistry
     purchase_repo: PurchaseRepository

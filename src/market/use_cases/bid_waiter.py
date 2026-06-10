@@ -9,7 +9,7 @@ from src.config import Settings, settings
 from src.market.api import (
     cancel_bid_order,
     fetch_account_balance_rub,
-    fetch_existing_bonds,
+    fetch_bond_positions,
     fetch_tmon_etf_price_at,
     place_bid_order,
     replace_bid_order,
@@ -17,7 +17,7 @@ from src.market.api import (
 from src.market.context import MarketContext
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_bid_fill_notification
-from src.market.order_registry import ActiveBidOrder
+from src.market.bid_order_registry import ActiveBidOrder
 from src.market.utils import normalize_quotation
 from src.stats.models import PurchaseStrategy
 from src.telegram import notify
@@ -25,14 +25,14 @@ from src.telegram import notify
 logger = logging.getLogger(__name__)
 
 
-def _decide_target_price(
+def _decide_target_price_percent(
     bond: EnrichedBond, our_order: ActiveBidOrder | None
 ) -> float | None:
     top = bond.bid_price_percent
     if top <= 0:
         return None
-    if our_order and our_order.price >= top:
-        return our_order.price
+    if our_order and our_order.price_percent >= top:
+        return our_order.price_percent
     return top + bond.min_price_increment
 
 
@@ -53,16 +53,21 @@ def _compute_bid_quantity(
         else 0.0
     )
     qty_by_shared_cap = int(
-        max(0.0, settings.MAX_SUM_PER_BOND - sniper_held_value) // target_real_price
+        max(0.0, settings.TOTAL_MAX_SUM_PER_BOND - sniper_held_value)
+        // target_real_price
     )
 
-    effective_balance = balance + ctx.registry.reserved_value_for(bond.figi)
+    reserved_rub = sum(
+        bond.real_price_at(o.price_percent) * o.quantity
+        for o in ctx.bid_registry.bids_for(bond.figi)
+    )
+    effective_balance = balance + reserved_rub
     qty_by_balance = int(effective_balance // target_real_price)
 
     return min(qty_by_bid_cap, qty_by_shared_cap, qty_by_balance)
 
 
-async def _submit(
+async def _place_or_replace_bid(
     ctx: MarketContext,
     bond: EnrichedBond,
     qty: int,
@@ -82,19 +87,17 @@ async def _submit(
     if response.lots_executed > 0:
         await _record_fill(ctx, bond, response.lots_executed, price_percent)
     if old is not None:
-        ctx.registry.remove(bond.figi, old.order_id)
-    ctx.registry.add(
+        ctx.bid_registry.remove(bond.figi, old.order_id)
+    ctx.bid_registry.add(
         ActiveBidOrder(
             order_id=response.order_id,
             figi=bond.figi,
-            price=price_percent,
+            price_percent=price_percent,
             quantity=response.lots_requested - response.lots_executed,
         )
     )
     if old is None:
-        logger.info(
-            f"Placed bid for {bond.ticker}: {qty} lots at {price_percent:.4f}%"
-        )
+        logger.info(f"Placed bid for {bond.ticker}: {qty} lots at {price_percent:.4f}%")
     else:
         logger.info(
             f"Replaced bid for {bond.ticker}: {old.order_id} -> {response.order_id}, "
@@ -102,47 +105,47 @@ async def _submit(
         )
 
 
-async def _cancel(
+async def _cancel_bid(
     ctx: MarketContext, bond: EnrichedBond, order: ActiveBidOrder
 ) -> None:
     await cancel_bid_order(ctx.client, ctx.account_id, order.order_id)
-    ctx.registry.remove(bond.figi, order.order_id)
+    ctx.bid_registry.remove(bond.figi, order.order_id)
     logger.info(f"Cancelled bid for {bond.ticker}: {order.order_id}")
 
 
-async def process_bid_for_orderbook(ctx: MarketContext, bond: EnrichedBond) -> None:
+async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
     if bond.ticker in settings.BLACK_LIST_TICKERS:
         return
 
-    existing_bids = ctx.registry.bids_for(bond.figi)
+    existing_bids = ctx.bid_registry.bids_for(bond.figi)
     if len(existing_bids) > 1:
         logger.warning(f"Multiple bid orders for {bond.ticker}, expected at most 1")
     our_order = existing_bids[0] if existing_bids else None
 
-    target_price = _decide_target_price(bond, our_order)
+    target_price = _decide_target_price_percent(bond, our_order)
     if target_price is None:
         return
 
     yield_at_target = bond.annual_yield_at(target_price)
 
     if not (
-        settings.BID_ANNUAL_YIELD_MIN
+        settings.BID_MIN_ANNUAL_YIELD
         <= yield_at_target
-        <= settings.BID_ANNUAL_YIELD_MAX
+        <= settings.BID_MAX_ANNUAL_YIELD
     ):
         if our_order:
             logger.info(
                 f"Yield {yield_at_target:.2f}% for {bond.ticker} is outside the bid range "
-                f"({settings.BID_ANNUAL_YIELD_MIN}%, {settings.BID_ANNUAL_YIELD_MAX}%); cancelling"
+                f"({settings.BID_MIN_ANNUAL_YIELD}%, {settings.BID_MAX_ANNUAL_YIELD}%); cancelling"
             )
-            await _cancel(ctx, bond, our_order)
+            await _cancel_bid(ctx, bond, our_order)
         return
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     if balance is None:
         return
 
-    existing_positions = await fetch_existing_bonds(ctx.client, ctx.account_id)
+    existing_positions = await fetch_bond_positions(ctx.client, ctx.account_id)
     existing_position = existing_positions.get(bond.figi)
 
     target_real_price = bond.real_price_at(target_price)
@@ -156,17 +159,17 @@ async def process_bid_for_orderbook(ctx: MarketContext, bond: EnrichedBond) -> N
     if target_qty == 0:
         if our_order:
             logger.info(f"Target qty for {bond.ticker} is 0; cancelling existing bid")
-            await _cancel(ctx, bond, our_order)
+            await _cancel_bid(ctx, bond, our_order)
         return
 
     if our_order is None:
-        await _submit(ctx, bond, target_qty, target_price)
+        await _place_or_replace_bid(ctx, bond, target_qty, target_price)
         return
 
-    if our_order.price == target_price and our_order.quantity == target_qty:
+    if our_order.price_percent == target_price and our_order.quantity == target_qty:
         return
 
-    await _submit(ctx, bond, target_qty, target_price, old=our_order)
+    await _place_or_replace_bid(ctx, bond, target_qty, target_price, old=our_order)
 
 
 async def _record_fill(
@@ -200,12 +203,12 @@ async def _record_fill(
     )
 
 
-async def process_order_state(
+async def process_bid_order_state(
     ctx: MarketContext,
     event: OrderStateStreamOrderState,
     figi_to_bond: dict[str, EnrichedBond],
 ) -> None:
-    existing = ctx.registry.find_by_order_id(event.order_id)
+    existing = ctx.bid_registry.find_by_order_id(event.order_id)
     if existing is None:
         return
 
@@ -218,7 +221,7 @@ async def process_order_state(
                 f"skipping purchase record"
             )
         else:
-            await _record_fill(ctx, bond, delta_lots, existing.price)
+            await _record_fill(ctx, bond, delta_lots, existing.price_percent)
 
     status = event.execution_report_status
     if status in (
@@ -226,11 +229,11 @@ async def process_order_state(
         OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_CANCELLED,
         OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_REJECTED,
     ):
-        ctx.registry.remove(existing.figi, event.order_id)
+        ctx.bid_registry.remove(existing.figi, event.order_id)
     elif status == OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL:
-        ctx.registry.set_quantity(existing.figi, event.order_id, event.lots_left)
+        ctx.bid_registry.set_quantity(existing.figi, event.order_id, event.lots_left)
 
 
 async def refresh_all_bids(ctx: MarketContext, bonds: Iterable[EnrichedBond]) -> None:
     for bond in list(bonds):
-        await process_bid_for_orderbook(ctx, bond)
+        await process_bid_waiter(ctx, bond)

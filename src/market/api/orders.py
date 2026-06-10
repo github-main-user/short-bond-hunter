@@ -29,7 +29,7 @@ _ACTIVE_STATUSES = {
 }
 
 
-async def buy_bond(
+async def buy_at_ask(
     client: AsyncServices, account_id: str, bond: "EnrichedBond", quantity: int
 ) -> float | None:
 
