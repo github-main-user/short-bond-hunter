@@ -7,7 +7,6 @@ from t_tech.invest import (
     AsyncClient,
     Bond,
     MarketDataRequest,
-    OrderBook,
     OrderBookInstrument,
     SubscribeOrderBookRequest,
     SubscriptionAction,
@@ -16,7 +15,12 @@ from t_tech.invest.async_services import AsyncServices
 from t_tech.invest.schemas import RiskLevel
 
 from src.config import settings
-from src.market.api import fetch_coupons_sum, fetch_raw_bonds, fetch_user_commission
+from src.market.api import (
+    fetch_coupons_sum,
+    fetch_orderbook,
+    fetch_raw_bonds,
+    fetch_user_commission,
+)
 from src.market.domain import EnrichedBond
 
 logger = logging.getLogger(__name__)
@@ -60,15 +64,18 @@ class BondProvider:
                 for bond in filtered
             ]
         )
+        orderbooks = await asyncio.gather(
+            *[fetch_orderbook(client, bond.figi) for bond in filtered]
+        )
 
         bonds = [
             EnrichedBond.from_bond(
                 bond,
                 commission_percent=user_commission,
                 coupons_sum=coupon_sum,
-                orderbook=OrderBook(figi=bond.figi, asks=[], bids=[]),
+                orderbook=orderbook,
             )
-            for bond, coupon_sum in zip(filtered, coupon_sums)
+            for bond, coupon_sum, orderbook in zip(filtered, coupon_sums, orderbooks)
         ]
         self.figi_to_bond = {b.figi: b for b in bonds}
         return bonds
@@ -77,6 +84,8 @@ class BondProvider:
         while True:
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 bonds = await self._get_tradable_bonds(client)
+                for bond in bonds:
+                    yield bond
                 async for bond in self._stream_price_updates(client, bonds):
                     yield bond
 
