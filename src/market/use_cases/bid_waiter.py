@@ -214,7 +214,7 @@ async def process_bid_order_state(
     if existing is None:
         return
 
-    delta_lots = existing.quantity - event.lots_left
+    delta_lots = existing.quantity - event.lots_left - event.lots_cancelled
     if delta_lots > 0:
         bond = figi_to_bond.get(existing.figi)
         if bond is None:
