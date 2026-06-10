@@ -21,6 +21,16 @@ class MaturityEvent:
     operation_date: datetime
 
 
+@dataclass(frozen=True)
+class PriceView:
+    price_percent: float
+    current_price: float
+    commission: float
+    real_price: float
+    benefit: float
+    annual_yield: float
+
+
 @dataclass
 class EnrichedBond:
     name: str
@@ -48,27 +58,26 @@ class EnrichedBond:
     def full_return(self) -> float:
         return self.nominal + self.coupons_sum
 
-    def current_price_at(self, price_percent: float) -> float:
-        return (self.nominal * price_percent) / 100
+    def at(self, price_percent: float) -> PriceView:
+        current_price = (self.nominal * price_percent) / 100
+        commission = current_price * (self.commission_percent / 100)
+        real_price = current_price + self.aci_value + commission
+        benefit = self.full_return - real_price
 
-    def commission_at(self, price_percent: float) -> float:
-        return self.current_price_at(price_percent) * (self.commission_percent / 100)
-
-    def real_price_at(self, price_percent: float) -> float:
-        return (
-            self.current_price_at(price_percent)
-            + self.aci_value
-            + self.commission_at(price_percent)
-        )
-
-    def annual_yield_at(self, price_percent: float) -> float:
         days = self.days_to_maturity
-        real_price = self.real_price_at(price_percent)
-
         if days <= 0 or real_price <= 0:
-            return 0.0
+            annual_yield = 0.0
+        else:
+            annual_yield = (benefit / real_price) * (365.25 / days) * 100
 
-        return ((self.full_return - real_price) / real_price) * (365.25 / days) * 100
+        return PriceView(
+            price_percent=price_percent,
+            current_price=current_price,
+            commission=commission,
+            real_price=real_price,
+            benefit=benefit,
+            annual_yield=annual_yield,
+        )
 
     @property
     def ask_price_percent(self) -> float:
@@ -83,26 +92,6 @@ class EnrichedBond:
         return self.orderbook.asks[0].quantity if self.orderbook.asks else 0
 
     @property
-    def ask_current_price(self) -> float:
-        return self.current_price_at(self.ask_price_percent)
-
-    @property
-    def ask_commission(self) -> float:
-        return self.commission_at(self.ask_price_percent)
-
-    @property
-    def ask_real_price(self) -> float:
-        return self.real_price_at(self.ask_price_percent)
-
-    @property
-    def ask_benefit(self) -> float:
-        return self.full_return - self.ask_real_price
-
-    @property
-    def ask_annual_yield(self) -> float:
-        return self.annual_yield_at(self.ask_price_percent)
-
-    @property
     def bid_price_percent(self) -> float:
         return (
             normalize_quotation(self.orderbook.bids[0].price)
@@ -115,24 +104,12 @@ class EnrichedBond:
         return self.orderbook.bids[0].quantity if self.orderbook.bids else 0
 
     @property
-    def bid_current_price(self) -> float:
-        return self.current_price_at(self.bid_price_percent)
+    def ask(self) -> PriceView:
+        return self.at(self.ask_price_percent)
 
     @property
-    def bid_commission(self) -> float:
-        return self.commission_at(self.bid_price_percent)
-
-    @property
-    def bid_real_price(self) -> float:
-        return self.real_price_at(self.bid_price_percent)
-
-    @property
-    def bid_benefit(self) -> float:
-        return self.full_return - self.bid_real_price
-
-    @property
-    def bid_annual_yield(self) -> float:
-        return self.annual_yield_at(self.bid_price_percent)
+    def bid(self) -> PriceView:
+        return self.at(self.bid_price_percent)
 
     @classmethod
     def from_bond(
