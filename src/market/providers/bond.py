@@ -66,7 +66,7 @@ class BondProvider:
                 bond,
                 commission_percent=user_commission,
                 coupons_sum=coupon_sum,
-                orderbook=OrderBook(figi=bond.figi, asks=[]),
+                orderbook=OrderBook(figi=bond.figi, asks=[], bids=[]),
             )
             for bond, coupon_sum in zip(filtered, coupon_sums)
         ]
