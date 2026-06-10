@@ -143,7 +143,7 @@ async def process_bid_for_orderbook(ctx: MarketContext, bond: EnrichedBond) -> N
         return
 
     existing_positions = await fetch_existing_bonds(ctx.client, ctx.account_id)
-    existing_position = existing_positions.get(bond.ticker)
+    existing_position = existing_positions.get(bond.figi)
 
     target_real_price = bond.real_price_at(target_price)
     if target_real_price <= 0:
