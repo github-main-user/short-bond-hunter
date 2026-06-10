@@ -84,18 +84,20 @@ async def _place_or_replace_bid(
         )
     if response is None:
         return
-    if response.lots_executed > 0:
-        await _record_fill(ctx, bond, response.lots_executed, price_percent)
+
     if old is not None:
         ctx.bid_registry.remove(bond.figi, old.order_id)
-    ctx.bid_registry.add(
-        ActiveBidOrder(
-            order_id=response.order_id,
-            figi=bond.figi,
-            price_percent=price_percent,
-            quantity=response.lots_requested - response.lots_executed,
+    lots_left = response.lots_requested - response.lots_executed
+    if lots_left > 0:
+        ctx.bid_registry.add(
+            ActiveBidOrder(
+                order_id=response.order_id,
+                figi=bond.figi,
+                price_percent=price_percent,
+                quantity=lots_left,
+            )
         )
-    )
+
     if old is None:
         logger.info(f"Placed bid for {bond.ticker}: {qty} lots at {price_percent:.4f}%")
     else:
@@ -103,6 +105,9 @@ async def _place_or_replace_bid(
             f"Replaced bid for {bond.ticker}: {old.order_id} -> {response.order_id}, "
             f"qty={qty}, price={price_percent:.4f}%"
         )
+
+    if response.lots_executed > 0:
+        await _record_fill(ctx, bond, response.lots_executed, price_percent)
 
 
 async def _cancel_bid(
