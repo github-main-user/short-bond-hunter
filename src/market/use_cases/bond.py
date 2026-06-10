@@ -13,6 +13,7 @@ from src.market.api import (
 )
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_purchase_notification
+from src.market.order_registry import OrderRegistry
 from src.market.utils import normalize_quotation
 from src.stats import PurchaseRepository
 from src.stats.models import PurchaseStrategy
@@ -49,6 +50,7 @@ def _compute_purchase_quantity(
     bond: EnrichedBond,
     balance: float,
     existing_position: PortfolioPosition | None,
+    registry: OrderRegistry,
     settings: Settings,
 ) -> int:
     quantity_to_buy_single = int(
@@ -59,9 +61,11 @@ def _compute_purchase_quantity(
         current_value = normalize_quotation(
             existing_position.quantity
         ) * normalize_quotation(existing_position.current_price)
-        allowed_budget = settings.MAX_SUM_PER_BOND - current_value
     else:
-        allowed_budget = settings.MAX_SUM_PER_BOND
+        current_value = 0.0
+
+    waiter_reserved = registry.reserved_value_for(bond.figi)
+    allowed_budget = settings.MAX_SUM_PER_BOND - current_value - waiter_reserved
 
     quantity_allowed_to_buy = 0
     if allowed_budget > 0:
@@ -88,6 +92,7 @@ async def process_bond(
     client: AsyncServices,
     bond: EnrichedBond,
     repo: PurchaseRepository,
+    registry: OrderRegistry,
     account_id: str,
 ) -> None:
     logger.info(
@@ -107,7 +112,7 @@ async def process_bond(
     existing_position = existing_bonds.get(bond.ticker)
 
     quantity_to_buy = _compute_purchase_quantity(
-        bond, balance, existing_position, settings
+        bond, balance, existing_position, registry, settings
     )
 
     if quantity_to_buy <= 0:

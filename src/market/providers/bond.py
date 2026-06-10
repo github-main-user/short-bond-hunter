@@ -46,6 +46,7 @@ class BondProvider:
     def __init__(self, settings: Settings) -> None:
         self._token = settings.TINVEST_TOKEN
         self._bond_refresh_interval_seconds = settings.BOND_REFRESH_INTERVAL_SECONDS
+        self.figi_to_bond: dict[str, EnrichedBond] = {}
 
     async def _get_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
         user_commission = await fetch_user_commission(client)
@@ -62,7 +63,7 @@ class BondProvider:
             ]
         )
 
-        return [
+        bonds = [
             EnrichedBond.from_bond(
                 bond,
                 commission_percent=user_commission,
@@ -71,6 +72,8 @@ class BondProvider:
             )
             for bond, coupon_sum in zip(filtered, coupon_sums)
         ]
+        self.figi_to_bond = {b.figi: b for b in bonds}
+        return bonds
 
     async def stream(self):
         while True:
@@ -82,8 +85,6 @@ class BondProvider:
     async def _stream_price_updates(
         self, client: AsyncServices, bonds: list[EnrichedBond]
     ):
-        figi_to_bond = {b.figi: b for b in bonds}
-
         async def request_iterator():
             yield MarketDataRequest(
                 subscribe_order_book_request=SubscribeOrderBookRequest(
@@ -107,7 +108,7 @@ class BondProvider:
                         logger.info("Skipped market data: no orderbook")
                         continue
 
-                    bond = figi_to_bond.get(marketdata.orderbook.figi)
+                    bond = self.figi_to_bond.get(marketdata.orderbook.figi)
                     if not bond:
                         logger.debug(
                             f"Skipped update for bond {marketdata.orderbook.figi} (figi):"
