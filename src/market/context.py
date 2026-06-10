@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from t_tech.invest.async_services import AsyncServices
 
 from src.market.bid_order_registry import BidOrderRegistry
-from src.stats import PurchaseRepository
+from src.stats import MaturityRepository, PurchaseRepository
 
 
 @dataclass
@@ -12,3 +12,4 @@ class MarketContext:
     account_id: str
     bid_registry: BidOrderRegistry
     purchase_repo: PurchaseRepository
+    maturity_repo: MaturityRepository

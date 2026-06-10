@@ -63,6 +63,7 @@ async def start_market_session() -> None:
             account_id=account_id,
             bid_registry=bid_registry,
             purchase_repo=purchase_repo,
+            maturity_repo=maturity_repo,
         )
 
         bond_provider = BondProvider(settings)
@@ -76,7 +77,7 @@ async def start_market_session() -> None:
 
         async def maturity_loop():
             async for event in maturity_provider.stream():
-                await process_maturity(client, maturity_repo, event)
+                await process_maturity(ctx, event)
                 if event.event_type == MaturityEventType.REPAYMENT:
                     await refresh_all_bids(ctx, bond_provider.figi_to_bond.values())
 
