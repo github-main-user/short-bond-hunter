@@ -7,13 +7,13 @@ from src.config import settings
 from src.market.api import fetch_account_id, fetch_active_bid_orders
 from src.market.context import MarketContext
 from src.market.domain import MaturityEventType
-from src.market.order_registry import ActiveBidOrder, OrderRegistry
+from src.market.bid_order_registry import ActiveBidOrder, BidOrderRegistry
 from src.market.providers import BondProvider, MaturityProvider, OrderStateProvider
 from src.market.use_cases import (
-    process_bid_for_orderbook,
-    process_bond,
+    process_ask_sniper,
+    process_bid_waiter,
     process_maturity,
-    process_order_state,
+    process_bid_order_state,
     refresh_all_bids,
 )
 from src.market.utils import normalize_quotation
@@ -32,16 +32,16 @@ async def _with_retry(fn, *args, **kwargs) -> None:
             await asyncio.sleep(60 * 5)
 
 
-async def _sync_registry_from_broker(
-    client, account_id: str, registry: OrderRegistry
+async def _sync_bid_registry_from_broker(
+    client, account_id: str, bid_registry: BidOrderRegistry
 ) -> None:
     existing = await fetch_active_bid_orders(client, account_id)
     for order in existing:
-        registry.add(
+        bid_registry.add(
             ActiveBidOrder(
                 order_id=order.order_id,
                 figi=order.figi,
-                price=normalize_quotation(order.initial_security_price),
+                price_percent=normalize_quotation(order.initial_security_price),
                 quantity=order.lots_requested - order.lots_executed,
             )
         )
@@ -51,17 +51,17 @@ async def _sync_registry_from_broker(
 async def start_market_session() -> None:
     purchase_repo = PurchaseRepository()
     maturity_repo = MaturityRepository()
-    registry = OrderRegistry()
+    bid_registry = BidOrderRegistry()
 
     async with AsyncClient(settings.TINVEST_TOKEN) as client:
         account_id = await fetch_account_id(client)
 
-        await _sync_registry_from_broker(client, account_id, registry)
+        await _sync_bid_registry_from_broker(client, account_id, bid_registry)
 
         ctx = MarketContext(
             client=client,
             account_id=account_id,
-            registry=registry,
+            bid_registry=bid_registry,
             purchase_repo=purchase_repo,
         )
 
@@ -71,8 +71,8 @@ async def start_market_session() -> None:
 
         async def bond_loop():
             async for bond in bond_provider.stream():
-                await process_bond(ctx, bond)
-                await process_bid_for_orderbook(ctx, bond)
+                await process_ask_sniper(ctx, bond)
+                await process_bid_waiter(ctx, bond)
 
         async def maturity_loop():
             async for event in maturity_provider.stream():
@@ -82,7 +82,7 @@ async def start_market_session() -> None:
 
         async def order_state_loop():
             async for event in order_state_provider.stream():
-                await process_order_state(ctx, event, bond_provider.figi_to_bond)
+                await process_bid_order_state(ctx, event, bond_provider.figi_to_bond)
 
         await asyncio.gather(
             _with_retry(bond_loop),

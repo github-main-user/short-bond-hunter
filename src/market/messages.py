@@ -19,7 +19,7 @@ def compose_coupon_notification(
     )
 
 
-def compose_purchase_notification(
+def compose_ask_snipe_notification(
     bond: EnrichedBond,
     buy_quantity: int,
     buy_price: float,

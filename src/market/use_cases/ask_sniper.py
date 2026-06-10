@@ -5,15 +5,15 @@ from t_tech.invest import PortfolioPosition
 
 from src.config import Settings, settings
 from src.market.api import (
-    buy_bond,
+    buy_at_ask,
     fetch_account_balance_rub,
-    fetch_existing_bonds,
+    fetch_bond_positions,
     fetch_tmon_etf_price_at,
 )
 from src.market.context import MarketContext
 from src.market.domain import EnrichedBond
-from src.market.messages import compose_purchase_notification
-from src.market.order_registry import OrderRegistry
+from src.market.messages import compose_ask_snipe_notification
+from src.market.bid_order_registry import BidOrderRegistry
 from src.market.utils import normalize_quotation
 from src.stats.models import PurchaseStrategy
 from src.telegram import notify
@@ -21,20 +21,20 @@ from src.telegram import notify
 logger = logging.getLogger(__name__)
 
 
-def _is_bond_eligible_for_purchase(bond: EnrichedBond) -> bool:
+def _is_eligible_for_snipe(bond: EnrichedBond) -> bool:
     if bond.ticker in settings.BLACK_LIST_TICKERS:
         logger.info(f"Ineligible bond {bond.ticker}: bond is in the blacklist")
         return False
 
     if not (
-        settings.ASK_ANNUAL_YIELD_MIN
+        settings.ASK_MIN_ANNUAL_YIELD
         <= bond.ask_annual_yield
-        <= settings.ASK_ANNUAL_YIELD_MAX
+        <= settings.ASK_MAX_ANNUAL_YIELD
     ):
         logger.info(
             f"Ineligible bond {bond.ticker}: annual yield "
             f"({bond.ask_annual_yield:.2f}%) is not in the allowed range "
-            f"({settings.ASK_ANNUAL_YIELD_MIN}%, {settings.ASK_ANNUAL_YIELD_MAX}%)"
+            f"({settings.ASK_MIN_ANNUAL_YIELD}%, {settings.ASK_MAX_ANNUAL_YIELD}%)"
         )
         return False
 
@@ -49,12 +49,10 @@ def _compute_purchase_quantity(
     bond: EnrichedBond,
     balance: float,
     existing_position: PortfolioPosition | None,
-    registry: OrderRegistry,
+    bid_registry: BidOrderRegistry,
     settings: Settings,
 ) -> int:
-    quantity_to_buy_single = int(
-        settings.ASK_BOND_SUM_MAX_PER_PURCHASE // bond.ask_real_price
-    )
+    qty_by_purchase_cap = int(settings.ASK_MAX_SUM_PER_PURCHASE // bond.ask_real_price)
 
     if existing_position:
         current_value = normalize_quotation(
@@ -63,49 +61,52 @@ def _compute_purchase_quantity(
     else:
         current_value = 0.0
 
-    waiter_reserved = registry.reserved_value_for(bond.figi)
-    allowed_budget = settings.MAX_SUM_PER_BOND - current_value - waiter_reserved
+    waiter_reserved = sum(
+        bond.real_price_at(o.price_percent) * o.quantity
+        for o in bid_registry.bids_for(bond.figi)
+    )
+    allowed_budget = settings.TOTAL_MAX_SUM_PER_BOND - current_value - waiter_reserved
 
-    quantity_allowed_to_buy = 0
+    qty_by_shared_cap = 0
     if allowed_budget > 0:
-        quantity_allowed_to_buy = int(allowed_budget // bond.ask_real_price)
+        qty_by_shared_cap = int(allowed_budget // bond.ask_real_price)
 
-    quantity_available_to_buy = int(balance // bond.ask_real_price)
+    qty_by_balance = int(balance // bond.ask_real_price)
 
     qty = min(
-        quantity_to_buy_single,
-        quantity_allowed_to_buy,
-        quantity_available_to_buy,
+        qty_by_purchase_cap,
+        qty_by_shared_cap,
+        qty_by_balance,
         bond.ask_quantity,
     )
     if qty == 0:
         logger.info(
             f"{bond.ticker} quantity breakdown: "
-            f"allowed_single={quantity_to_buy_single}, allowed_total={quantity_allowed_to_buy}, "
-            f"balance={quantity_available_to_buy}, asks={bond.ask_quantity}"
+            f"by_purchase_cap={qty_by_purchase_cap}, by_shared_cap={qty_by_shared_cap}, "
+            f"by_balance={qty_by_balance}, asks={bond.ask_quantity}"
         )
     return qty
 
 
-async def process_bond(ctx: MarketContext, bond: EnrichedBond) -> None:
+async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     logger.info(
-        f"Processing bond: {bond.ticker} ({bond.days_to_maturity}d, {bond.ask_annual_yield:.2f}%) | "
+        f"Ask sniper: processing {bond.ticker} ({bond.days_to_maturity}d, {bond.ask_annual_yield:.2f}%) | "
         f"cost: {bond.ask_current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {bond.ask_commission:.2f}₽ = {bond.ask_real_price:.2f}₽ | "
         f"return: {bond.nominal:.2f}₽ + {bond.coupons_sum:.2f}₽ = {bond.full_return:.2f}₽"
     )
 
-    if not _is_bond_eligible_for_purchase(bond):
+    if not _is_eligible_for_snipe(bond):
         return
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     if not balance:
         return
 
-    existing_bonds = await fetch_existing_bonds(ctx.client, ctx.account_id)
+    existing_bonds = await fetch_bond_positions(ctx.client, ctx.account_id)
     existing_position = existing_bonds.get(bond.figi)
 
     quantity_to_buy = _compute_purchase_quantity(
-        bond, balance, existing_position, ctx.registry, settings
+        bond, balance, existing_position, ctx.bid_registry, settings
     )
 
     if quantity_to_buy <= 0:
@@ -114,7 +115,7 @@ async def process_bond(ctx: MarketContext, bond: EnrichedBond) -> None:
         )
         return
 
-    buy_price = await buy_bond(ctx.client, ctx.account_id, bond, quantity_to_buy)
+    buy_price = await buy_at_ask(ctx.client, ctx.account_id, bond, quantity_to_buy)
 
     if buy_price is None:
         return
@@ -145,7 +146,7 @@ async def process_bond(ctx: MarketContext, bond: EnrichedBond) -> None:
     )
 
     remaining_balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
-    message = compose_purchase_notification(
+    message = compose_ask_snipe_notification(
         bond, quantity_to_buy, real_buy_price, remaining_balance
     )
     await notify(message)
