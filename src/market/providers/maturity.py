@@ -27,13 +27,13 @@ class MaturityProvider:
 
     async def stream(self) -> AsyncGenerator[MaturityEvent]:
         while True:
-            logger.info("Starting hourly maturity fetch")
+            logger.debug("Starting hourly maturity fetch")
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 since = datetime.now(tz=timezone.utc).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
                 operations = await fetch_operations(client, self._account_id, since)
-                logger.info(f"Got {len(operations)} operations for today")
+                logger.debug(f"Got {len(operations)} operations for today")
 
                 for operation in operations:
                     event_type = _OPERATION_TYPE_MAP.get(operation.operation_type)

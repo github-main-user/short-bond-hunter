@@ -16,11 +16,19 @@ class _TzFormatter(logging.Formatter):
 def setup_logging():
     formatter = _TzFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-    handlers: list[logging.Handler] = [
-        logging.StreamHandler(),
-        TimedRotatingFileHandler("logs/app.log", when="midnight", backupCount=14),
-    ]
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+
+    file_handler = TimedRotatingFileHandler(
+        "logs/app.log", when="midnight", backupCount=14
+    )
+    file_handler.setLevel(logging.DEBUG)
+
+    handlers: list[logging.Handler] = [stream_handler, file_handler]
     for h in handlers:
         h.setFormatter(formatter)
 
-    logging.basicConfig(level=logging.INFO, handlers=handlers)
+    logging.basicConfig(level=logging.DEBUG, handlers=handlers)
+    logging.getLogger("t_tech").setLevel(logging.WARNING)
+    for noisy in ("grpc", "asyncio", "aiohttp"):
+        logging.getLogger(noisy).setLevel(logging.INFO)
