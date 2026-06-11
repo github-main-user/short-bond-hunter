@@ -3,7 +3,7 @@ import argparse
 import logging
 
 from src.logging import setup_logging
-from src.stats import generate_report, init_db
+from src.stats import generate_report
 
 GROUPS = ("purchase", "month", "bond")
 
@@ -15,7 +15,6 @@ def main() -> None:
     args = parser.parse_args()
 
     setup_logging()
-    init_db()
     logging.info("Generating statistics...")
     generate_report(group=args.group, plot=args.plot)
 

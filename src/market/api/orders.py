@@ -1,16 +1,20 @@
 import logging
+import uuid
 from typing import TYPE_CHECKING
 
 from t_tech.invest import (
     OrderDirection,
     OrderExecutionReportStatus,
+    OrderState,
     OrderType,
+    PostOrderResponse,
     PriceType,
+    ReplaceOrderRequest,
     TimeInForceType,
 )
 from t_tech.invest.async_services import AsyncServices
 
-from src.market.utils import normalize_quotation
+from src.market.utils import denormalize_quotation, normalize_quotation
 
 if TYPE_CHECKING:
     from src.market.domain import EnrichedBond
@@ -18,7 +22,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def buy_bond(
+_ACTIVE_STATUSES = {
+    OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
+    OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
+    OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL,
+}
+
+
+async def buy_at_ask(
     client: AsyncServices, account_id: str, bond: "EnrichedBond", quantity: int
 ) -> float | None:
 
@@ -42,3 +53,78 @@ async def buy_bond(
         )
         return None
     return normalize_quotation(response.total_order_amount) * bond.nominal / 100
+
+
+async def place_bid_order(
+    client: AsyncServices,
+    account_id: str,
+    figi: str,
+    quantity: int,
+    price_percent: float,
+) -> PostOrderResponse | None:
+    response = await client.orders.post_order(
+        account_id=account_id,
+        figi=figi,
+        quantity=quantity,
+        price=denormalize_quotation(price_percent),
+        direction=OrderDirection.ORDER_DIRECTION_BUY,
+        order_type=OrderType.ORDER_TYPE_LIMIT,
+        time_in_force=TimeInForceType.TIME_IN_FORCE_DAY,
+        price_type=PriceType.PRICE_TYPE_POINT,
+    )
+    if response.execution_report_status not in _ACTIVE_STATUSES:
+        logger.warning(
+            f"Bid for {figi} was not accepted"
+            f" (status: {response.execution_report_status})"
+        )
+        return None
+    return response
+
+
+async def replace_bid_order(
+    client: AsyncServices,
+    account_id: str,
+    old_order_id: str,
+    quantity: int,
+    price_percent: float,
+) -> PostOrderResponse | None:
+    response = await client.orders.replace_order(
+        ReplaceOrderRequest(
+            account_id=account_id,
+            order_id=old_order_id,
+            idempotency_key=str(uuid.uuid4()),
+            quantity=quantity,
+            price=denormalize_quotation(price_percent),
+            price_type=PriceType.PRICE_TYPE_POINT,
+        )
+    )
+    if response.execution_report_status not in _ACTIVE_STATUSES:
+        logger.warning(
+            f"Replace of {old_order_id} was not accepted"
+            f" (status: {response.execution_report_status})"
+        )
+        return None
+    return response
+
+
+async def cancel_bid_order(
+    client: AsyncServices, account_id: str, order_id: str
+) -> None:
+    await client.orders.cancel_order(account_id=account_id, order_id=order_id)
+
+
+async def fetch_active_bid_orders(
+    client: AsyncServices, account_id: str
+) -> list[OrderState]:
+    response = await client.orders.get_orders(account_id=account_id)
+    return [
+        order
+        for order in response.orders
+        if order.execution_report_status
+        in (
+            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
+            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
+        )
+        and order.direction == OrderDirection.ORDER_DIRECTION_BUY
+        and order.order_type == OrderType.ORDER_TYPE_LIMIT
+    ]

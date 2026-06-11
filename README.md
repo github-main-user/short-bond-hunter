@@ -41,10 +41,13 @@ Here's a description of the available environment variables:
 ### Market Setup
 
 - `DAYS_TO_MATURITY_MAX`: Maximum number of days to maturity for a bond to be considered.
-- `ANNUAL_YIELD_MIN`: Minimum annual yield in percent for a bond to be purchased.
-- `ANNUAL_YIELD_MAX`: Maximum annual yield in percent for a bond to be purchased.
-- `BOND_SUM_MAX`: Maximum total sum in RUB for bonds of a single ticker that the bot can hold.
-- `BOND_SUM_MAX_SINGLE`: Maximum sum in RUB for bonds of a single ticker per one deal.
+- `ASK_ANNUAL_YIELD_MIN`: Minimum annual yield in percent for the ask sniper to purchase a bond.
+- `ASK_ANNUAL_YIELD_MAX`: Maximum annual yield in percent for the ask sniper to purchase a bond.
+- `BID_ANNUAL_YIELD_MIN`: Minimum annual yield in percent for the bid waiter to place a limit order.
+- `BID_ANNUAL_YIELD_MAX`: Maximum annual yield in percent for the bid waiter to place a limit order.
+- `MAX_SUM_PER_BOND`: Maximum total sum in RUB for bonds of a single ticker that the bot can hold (shared cap).
+- `ASK_BOND_SUM_MAX_PER_PURCHASE`: Maximum sum in RUB for bonds of a single ticker per one ask sniper purchase.
+- `BID_MAX_SUM_PER_BOND`: Maximum sum in RUB for bonds of a single ticker held by the bid waiter.
 - `BLACK_LIST_TICKERS`: A JSON array of ticker symbols to exclude from trading (e.g., `'["RU000A105JN7", "RU000A10A3R1"]'`).
 
 

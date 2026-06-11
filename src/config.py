@@ -12,10 +12,13 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str | None = None
 
     DAYS_TO_MATURITY_MAX: int
-    ANNUAL_YIELD_MIN: float
-    ANNUAL_YIELD_MAX: float
-    BOND_SUM_MAX: float
-    BOND_SUM_MAX_SINGLE: float
+    ASK_MIN_ANNUAL_YIELD: float
+    ASK_MAX_ANNUAL_YIELD: float
+    BID_MIN_ANNUAL_YIELD: float
+    BID_MAX_ANNUAL_YIELD: float
+    TOTAL_MAX_SUM_PER_BOND: float
+    ASK_MAX_SUM_PER_PURCHASE: float
+    BID_MAX_SUM_PER_BOND: float
     BLACK_LIST_TICKERS: set[str]
 
     BOND_REFRESH_INTERVAL_HOURS: int = 4

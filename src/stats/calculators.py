@@ -66,7 +66,7 @@ def per_purchase(
 
 def _weighted_yield(
     df: pd.DataFrame, returned_col: str, spent_col: str, days_w_col: str
-) -> tuple[pd.Series, pd.Series]:
+) -> pd.Series:
     avg_days = (df[days_w_col] / df[spent_col]).where(df[spent_col] > 0, 0.0)
     yield_ = (df[returned_col] / df[spent_col] * (365.25 / avg_days) * 100).where(
         (df[spent_col] > 0) & (avg_days > 0), 0.0

@@ -8,11 +8,11 @@ from src.market.utils import normalize_quotation
 logger = logging.getLogger(__name__)
 
 
-async def fetch_existing_bonds(
+async def fetch_bond_positions(
     client: AsyncServices, account_id: str
 ) -> dict[str, PortfolioPosition]:
     positions = (await client.operations.get_portfolio(account_id=account_id)).positions
-    return {p.ticker: p for p in positions if p.instrument_type == "bond"}
+    return {p.figi: p for p in positions if p.instrument_type == "bond"}
 
 
 async def fetch_account_balance_rub(
