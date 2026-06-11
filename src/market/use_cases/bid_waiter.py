@@ -75,11 +75,11 @@ async def _place_or_replace_bid(
 ) -> None:
     if old is None:
         response = await place_bid_order(
-            ctx.client, ctx.account_id, bond.figi, qty, price_percent
+            ctx.client, ctx.account_id, bond, qty, price_percent
         )
     else:
         response = await replace_bid_order(
-            ctx.client, ctx.account_id, old.order_id, qty, price_percent
+            ctx.client, ctx.account_id, bond, old.order_id, qty, price_percent
         )
     if response is None:
         return
@@ -97,12 +97,19 @@ async def _place_or_replace_bid(
             )
         )
 
+    view = bond.at(price_percent)
     if old is None:
-        logger.info(f"Placed bid for {bond.ticker}: {qty} lots at {price_percent:.4f}%")
+        logger.info(
+            f"Placed bid for {bond.ticker}: {qty} lots at {view.current_price:.2f}₽ "
+            f"(yield {view.annual_yield:.2f}%, cost {view.real_price:.2f}₽, "
+            f"top bid {bond.bid.current_price:.2f}₽)"
+        )
     else:
         logger.info(
             f"Replaced bid for {bond.ticker}: {old.order_id} -> {response.order_id}, "
-            f"qty={qty}, price={price_percent:.4f}%"
+            f"qty={qty}, price {view.current_price:.2f}₽ "
+            f"(yield {view.annual_yield:.2f}%, cost {view.real_price:.2f}₽, "
+            f"top bid {bond.bid.current_price:.2f}₽)"
         )
 
     if response.lots_executed > 0:
@@ -140,9 +147,15 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         if our_order:
             logger.info(
                 f"Yield {target.annual_yield:.2f}% for {bond.ticker} is outside the bid range "
-                f"({settings.BID_MIN_ANNUAL_YIELD}%, {settings.BID_MAX_ANNUAL_YIELD}%); cancelling"
+                f"[{settings.BID_MIN_ANNUAL_YIELD}%, {settings.BID_MAX_ANNUAL_YIELD}%]; cancelling"
             )
             await _cancel_bid(ctx, bond, our_order)
+        else:
+            logger.debug(
+                f"Skipped bid for {bond.ticker}: target yield {target.annual_yield:.2f}% "
+                f"is outside the bid range "
+                f"[{settings.BID_MIN_ANNUAL_YIELD}%, {settings.BID_MAX_ANNUAL_YIELD}%]"
+            )
         return
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
@@ -170,6 +183,10 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     if our_order.price_percent == target_price and our_order.quantity == target_qty:
+        logger.debug(
+            f"Bid for {bond.ticker} already at target: "
+            f"{target.current_price:.2f}₽, qty={target_qty}"
+        )
         return
 
     await _place_or_replace_bid(ctx, bond, target_qty, target_price, old=our_order)
@@ -182,6 +199,10 @@ async def _record_fill(
     price_percent: float,
 ) -> None:
     view = bond.at(price_percent)
+    logger.info(
+        f"Bid filled for {bond.ticker}: {lots_filled} lots at {view.current_price:.2f}₽ "
+        f"(yield {view.annual_yield:.2f}%)"
+    )
     tmon_price = await fetch_tmon_etf_price_at(
         ctx.client, datetime.now(tz=timezone.utc)
     )
@@ -214,9 +235,11 @@ async def process_bid_order_state(
     if existing is None:
         return
 
+    bond = figi_to_bond.get(existing.figi)
+    name = bond.ticker if bond else existing.figi
+
     delta_lots = existing.quantity - event.lots_left - event.lots_cancelled
     if delta_lots > 0:
-        bond = figi_to_bond.get(existing.figi)
         if bond is None:
             logger.warning(
                 f"Filled order {event.order_id} for unknown figi {existing.figi}; "
@@ -232,8 +255,13 @@ async def process_bid_order_state(
         OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_REJECTED,
     ):
         ctx.bid_registry.remove(existing.figi, event.order_id)
+        status_name = status.name.removeprefix("EXECUTION_REPORT_STATUS_")
+        logger.info(
+            f"Bid for {name} removed from registry: {event.order_id} ({status_name})"
+        )
     elif status == OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL:
         ctx.bid_registry.set_quantity(existing.figi, event.order_id, event.lots_left)
+        logger.info(f"Bid for {name} partially filled: {event.lots_left} lots left")
 
 
 async def refresh_all_bids(ctx: MarketContext, bonds: Iterable[EnrichedBond]) -> None:

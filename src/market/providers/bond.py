@@ -112,7 +112,7 @@ class BondProvider:
                     request_iterator()
                 ):
                     if not marketdata.orderbook:
-                        logger.info("Skipped market data: no orderbook")
+                        logger.debug("Skipped market data: no orderbook")
                         continue
 
                     bond = self.figi_to_bond.get(marketdata.orderbook.figi)

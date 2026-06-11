@@ -58,13 +58,13 @@ async def buy_at_ask(
 async def place_bid_order(
     client: AsyncServices,
     account_id: str,
-    figi: str,
+    bond: "EnrichedBond",
     quantity: int,
     price_percent: float,
 ) -> PostOrderResponse | None:
     response = await client.orders.post_order(
         account_id=account_id,
-        figi=figi,
+        figi=bond.figi,
         quantity=quantity,
         price=denormalize_quotation(price_percent),
         direction=OrderDirection.ORDER_DIRECTION_BUY,
@@ -74,7 +74,7 @@ async def place_bid_order(
     )
     if response.execution_report_status not in _ACTIVE_STATUSES:
         logger.warning(
-            f"Bid for {figi} was not accepted"
+            f"Bid for {bond.ticker} was not accepted"
             f" (status: {response.execution_report_status})"
         )
         return None
@@ -84,6 +84,7 @@ async def place_bid_order(
 async def replace_bid_order(
     client: AsyncServices,
     account_id: str,
+    bond: "EnrichedBond",
     old_order_id: str,
     quantity: int,
     price_percent: float,
@@ -100,7 +101,7 @@ async def replace_bid_order(
     )
     if response.execution_report_status not in _ACTIVE_STATUSES:
         logger.warning(
-            f"Replace of {old_order_id} was not accepted"
+            f"Replace of bid {old_order_id} for {bond.ticker} was not accepted"
             f" (status: {response.execution_report_status})"
         )
         return None

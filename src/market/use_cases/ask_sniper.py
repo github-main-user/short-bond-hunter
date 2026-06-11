@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def _is_eligible_for_snipe(bond: EnrichedBond) -> bool:
     if bond.ticker in settings.BLACK_LIST_TICKERS:
-        logger.info(f"Ineligible bond {bond.ticker}: bond is in the blacklist")
+        logger.debug(f"Ineligible bond {bond.ticker}: bond is in the blacklist")
         return False
 
     if not (
@@ -31,15 +31,15 @@ def _is_eligible_for_snipe(bond: EnrichedBond) -> bool:
         <= bond.ask.annual_yield
         <= settings.ASK_MAX_ANNUAL_YIELD
     ):
-        logger.info(
+        logger.debug(
             f"Ineligible bond {bond.ticker}: annual yield "
             f"({bond.ask.annual_yield:.2f}%) is not in the allowed range "
-            f"({settings.ASK_MIN_ANNUAL_YIELD}%, {settings.ASK_MAX_ANNUAL_YIELD}%)"
+            f"[{settings.ASK_MIN_ANNUAL_YIELD}%, {settings.ASK_MAX_ANNUAL_YIELD}%]"
         )
         return False
 
     if bond.ask.real_price <= 0:
-        logger.info(f"Ineligible bond {bond.ticker}: ask real price is not positive")
+        logger.debug(f"Ineligible bond {bond.ticker}: ask real price is not positive")
         return False
 
     return True
@@ -80,23 +80,23 @@ def _compute_purchase_quantity(
     )
     if qty == 0:
         logger.info(
-            f"{bond.ticker} quantity breakdown: "
-            f"by_purchase_cap={qty_by_purchase_cap}, by_shared_cap={qty_by_shared_cap}, "
-            f"by_balance={qty_by_balance}, asks={bond.ask_quantity}"
+            f"Skipped {bond.ticker}: quantity is 0 "
+            f"(by_purchase_cap={qty_by_purchase_cap}, by_shared_cap={qty_by_shared_cap}, "
+            f"by_balance={qty_by_balance}, asks={bond.ask_quantity})"
         )
     return qty
 
 
 async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
+    if not _is_eligible_for_snipe(bond):
+        return
+
     ask = bond.ask
     logger.info(
-        f"Ask sniper: processing {bond.ticker} ({bond.days_to_maturity}d, {ask.annual_yield:.2f}%) | "
+        f"Processing {bond.ticker} ({bond.days_to_maturity}d, {ask.annual_yield:.2f}%) | "
         f"cost: {ask.current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {ask.commission:.2f}₽ = {ask.real_price:.2f}₽ | "
         f"return: {bond.nominal:.2f}₽ + {bond.coupons_sum:.2f}₽ = {bond.full_return:.2f}₽"
     )
-
-    if not _is_eligible_for_snipe(bond):
-        return
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     if not balance:
@@ -110,9 +110,6 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     )
 
     if quantity_to_buy <= 0:
-        logger.info(
-            f"Skipped bond {bond.ticker}: calculated quantity is {quantity_to_buy}"
-        )
         return
 
     buy_price = await buy_at_ask(ctx.client, ctx.account_id, bond, quantity_to_buy)
