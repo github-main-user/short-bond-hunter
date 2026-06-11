@@ -63,7 +63,14 @@ def _compute_bid_quantity(
     effective_balance = balance + reserved_rub
     qty_by_balance = int(effective_balance // target_real_price)
 
-    return min(qty_by_bid_cap, qty_by_shared_cap, qty_by_balance)
+    qty = min(qty_by_bid_cap, qty_by_shared_cap, qty_by_balance)
+    if qty == 0:
+        logger.debug(
+            f"Skipped bid for {bond.ticker}: quantity is 0 "
+            f"(by_bid_cap={qty_by_bid_cap}, by_shared_cap={qty_by_shared_cap}, "
+            f"by_balance={qty_by_balance})"
+        )
+    return qty
 
 
 async def _place_or_replace_bid(
@@ -135,6 +142,7 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
 
     target_price = _decide_target_price_percent(bond, our_order)
     if target_price is None:
+        logger.debug(f"Skipped bid for {bond.ticker}: no bids in orderbook")
         return
 
     target = bond.at(target_price)
