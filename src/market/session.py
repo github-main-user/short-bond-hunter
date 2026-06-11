@@ -72,6 +72,9 @@ async def start_market_session() -> None:
 
         async def bond_loop():
             async for bond in bond_provider.stream():
+                if not bond.orderbook.asks and not bond.orderbook.bids:
+                    logger.debug(f"Skipped {bond.ticker}: empty orderbook")
+                    continue
                 try:
                     await process_ask_sniper(ctx, bond)
                     await process_bid_waiter(ctx, bond)
