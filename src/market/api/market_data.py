@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from t_tech.invest import CandleInterval
+from t_tech.invest import CandleInterval, OrderBook
 from t_tech.invest.async_services import AsyncServices
 
 from src.market.utils import normalize_quotation
@@ -9,6 +9,13 @@ from src.market.utils import normalize_quotation
 logger = logging.getLogger(__name__)
 
 _TMON_FIGI = "TCS70A106DL2"
+
+
+async def fetch_orderbook(
+    client: AsyncServices, figi: str, depth: int = 1
+) -> OrderBook:
+    response = await client.market_data.get_order_book(figi=figi, depth=depth)
+    return OrderBook(figi=figi, asks=response.asks, bids=response.bids)
 
 
 async def fetch_tmon_etf_price_at(

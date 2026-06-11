@@ -7,7 +7,6 @@ from t_tech.invest import (
     AsyncClient,
     Bond,
     MarketDataRequest,
-    OrderBook,
     OrderBookInstrument,
     SubscribeOrderBookRequest,
     SubscriptionAction,
@@ -15,8 +14,13 @@ from t_tech.invest import (
 from t_tech.invest.async_services import AsyncServices
 from t_tech.invest.schemas import RiskLevel
 
-from src.config import Settings, settings
-from src.market.api import fetch_coupons_sum, fetch_raw_bonds, fetch_user_commission
+from src.config import settings
+from src.market.api import (
+    fetch_coupons_sum,
+    fetch_orderbook,
+    fetch_raw_bonds,
+    fetch_user_commission,
+)
 from src.market.domain import EnrichedBond
 
 logger = logging.getLogger(__name__)
@@ -43,9 +47,8 @@ def _filter_bonds(bonds: list[Bond], maximum_days: int) -> list[Bond]:
 
 
 class BondProvider:
-    def __init__(self, settings: Settings) -> None:
-        self._token = settings.TINVEST_TOKEN
-        self._bond_refresh_interval_seconds = settings.BOND_REFRESH_INTERVAL_SECONDS
+    def __init__(self) -> None:
+        self.figi_to_bond: dict[str, EnrichedBond] = {}
 
     async def _get_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
         user_commission = await fetch_user_commission(client)
@@ -61,29 +64,34 @@ class BondProvider:
                 for bond in filtered
             ]
         )
+        orderbooks = await asyncio.gather(
+            *[fetch_orderbook(client, bond.figi) for bond in filtered]
+        )
 
-        return [
+        bonds = [
             EnrichedBond.from_bond(
                 bond,
                 commission_percent=user_commission,
                 coupons_sum=coupon_sum,
-                orderbook=OrderBook(figi=bond.figi, asks=[]),
+                orderbook=orderbook,
             )
-            for bond, coupon_sum in zip(filtered, coupon_sums)
+            for bond, coupon_sum, orderbook in zip(filtered, coupon_sums, orderbooks)
         ]
+        self.figi_to_bond = {b.figi: b for b in bonds}
+        return bonds
 
     async def stream(self):
         while True:
-            async with AsyncClient(self._token) as client:
+            async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 bonds = await self._get_tradable_bonds(client)
+                for bond in bonds:
+                    yield bond
                 async for bond in self._stream_price_updates(client, bonds):
                     yield bond
 
     async def _stream_price_updates(
         self, client: AsyncServices, bonds: list[EnrichedBond]
     ):
-        figi_to_bond = {b.figi: b for b in bonds}
-
         async def request_iterator():
             yield MarketDataRequest(
                 subscribe_order_book_request=SubscribeOrderBookRequest(
@@ -99,7 +107,7 @@ class BondProvider:
         logger.info(f"Subscribed to {len(bonds)} bonds")
 
         try:
-            async with asyncio.timeout(self._bond_refresh_interval_seconds):
+            async with asyncio.timeout(settings.BOND_REFRESH_INTERVAL_SECONDS):
                 async for marketdata in client.market_data_stream.market_data_stream(
                     request_iterator()
                 ):
@@ -107,7 +115,7 @@ class BondProvider:
                         logger.info("Skipped market data: no orderbook")
                         continue
 
-                    bond = figi_to_bond.get(marketdata.orderbook.figi)
+                    bond = self.figi_to_bond.get(marketdata.orderbook.figi)
                     if not bond:
                         logger.debug(
                             f"Skipped update for bond {marketdata.orderbook.figi} (figi):"
@@ -115,10 +123,11 @@ class BondProvider:
                         )
                         continue
 
-                    old_price = bond.real_price
+                    old_ask = bond.ask.real_price
+                    old_bid = bond.bid.real_price
                     bond.update(marketdata.orderbook)
 
-                    if old_price != bond.real_price:
+                    if old_ask != bond.ask.real_price or old_bid != bond.bid.real_price:
                         yield bond
         except TimeoutError:
             logger.info("Bonds update interval reached. Re-fetching...")

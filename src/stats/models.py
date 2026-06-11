@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from enum import Enum
+from enum import Enum, StrEnum
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -13,6 +13,11 @@ class RiskLevel(Enum):
     @classmethod  # type: ignore
     def from_int(cls, value: int) -> "RiskLevel":
         return [cls.UNSPECIFIED, cls.LOW, cls.MODERATE, cls.HIGH][value]
+
+
+class PurchaseStrategy(StrEnum):
+    ASK_SNIPER = "ASK_SNIPER"
+    BID_WAITER = "BID_WAITER"
 
 
 class Base(DeclarativeBase):
@@ -36,6 +41,7 @@ class BondPurchase(Base):
     risk_level: Mapped[RiskLevel]
     tmon_price_at_buy: Mapped[float | None]
     expected_maturity_date: Mapped[datetime]
+    strategy: Mapped[PurchaseStrategy]
     bought_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(tz=timezone.utc)
     )

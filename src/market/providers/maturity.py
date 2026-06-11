@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from t_tech.invest import AsyncClient, OperationType
 
-from src.config import Settings
+from src.config import settings
 from src.market.api import fetch_operations
 from src.market.domain import MaturityEvent, MaturityEventType
 from src.market.utils import normalize_quotation
@@ -22,14 +22,13 @@ _HOUR_IN_SECONDS = 60 * 60
 
 
 class MaturityProvider:
-    def __init__(self, account_id: str, settings: Settings):
+    def __init__(self, account_id: str):
         self._account_id = account_id
-        self._token = settings.TINVEST_TOKEN
 
     async def stream(self) -> AsyncGenerator[MaturityEvent]:
         while True:
             logger.info("Starting hourly maturity fetch")
-            async with AsyncClient(self._token) as client:
+            async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 since = datetime.now(tz=timezone.utc).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
