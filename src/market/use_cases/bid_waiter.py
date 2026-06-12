@@ -14,10 +14,10 @@ from src.market.api import (
     place_bid_order,
     replace_bid_order,
 )
+from src.market.bid_order_registry import ActiveBidOrder
 from src.market.context import MarketContext
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_bid_fill_notification
-from src.market.bid_order_registry import ActiveBidOrder
 from src.market.utils import normalize_quotation
 from src.stats.models import PurchaseStrategy
 from src.telegram import notify
@@ -28,12 +28,23 @@ logger = logging.getLogger(__name__)
 def _decide_target_price_percent(
     bond: EnrichedBond, our_order: ActiveBidOrder | None
 ) -> float | None:
-    top = bond.bid_price_percent
-    if top <= 0:
+    bid = bond.bid_price_percent
+    ask = bond.ask_price_percent
+
+    if bid <= 0:
+        logger.debug(f"Skipped bid for {bond.ticker}: no bids in orderbook")
         return None
-    if our_order and our_order.price_percent >= top:
+    if our_order and our_order.price_percent >= bid:
         return our_order.price_percent
-    return top + bond.min_price_increment
+
+    target = bid + bond.min_price_increment
+
+    if ask > 0 and target >= ask:
+        if bid < ask:
+            return bid
+        logger.debug(f"Skipped bid for {bond.ticker}: book is locked/crossed")
+        return None
+    return target
 
 
 def _compute_bid_quantity(
@@ -142,7 +153,6 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
 
     target_price = _decide_target_price_percent(bond, our_order)
     if target_price is None:
-        logger.debug(f"Skipped bid for {bond.ticker}: no bids in orderbook")
         return
 
     target = bond.at(target_price)
