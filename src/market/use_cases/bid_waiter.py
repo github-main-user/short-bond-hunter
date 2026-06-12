@@ -2,14 +2,13 @@ import logging
 from collections.abc import Iterable
 from datetime import datetime, timezone
 
-from t_tech.invest import OrderExecutionReportStatus, PortfolioPosition
+from t_tech.invest import OrderExecutionReportStatus
 from t_tech.invest.schemas import OrderStateStreamOrderState
 
 from src.config import settings
 from src.market.api import (
     cancel_bid_order,
     fetch_account_balance_rub,
-    fetch_bond_positions,
     fetch_tmon_etf_price_at,
     place_bid_order,
     replace_bid_order,
@@ -18,7 +17,6 @@ from src.market.bid_order_registry import ActiveBidOrder
 from src.market.context import MarketContext
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_bid_fill_notification
-from src.market.utils import normalize_quotation
 from src.stats.models import PurchaseStrategy
 from src.telegram import notify
 
@@ -51,21 +49,9 @@ def _compute_bid_quantity(
     bond: EnrichedBond,
     target_real_price: float,
     balance: float,
-    existing_position: PortfolioPosition | None,
     ctx: MarketContext,
 ) -> int:
     qty_by_bid_cap = int(settings.BID_MAX_SUM_PER_BOND // target_real_price)
-
-    sniper_held_value = (
-        normalize_quotation(existing_position.quantity)
-        * normalize_quotation(existing_position.current_price)
-        if existing_position
-        else 0.0
-    )
-    qty_by_shared_cap = int(
-        max(0.0, settings.TOTAL_MAX_SUM_PER_BOND - sniper_held_value)
-        // target_real_price
-    )
 
     reserved_rub = sum(
         bond.at(o.price_percent).real_price * o.quantity
@@ -74,12 +60,11 @@ def _compute_bid_quantity(
     effective_balance = balance + reserved_rub
     qty_by_balance = int(effective_balance // target_real_price)
 
-    qty = min(qty_by_bid_cap, qty_by_shared_cap, qty_by_balance)
+    qty = min(qty_by_bid_cap, qty_by_balance)
     if qty == 0:
         logger.debug(
             f"Skipped bid for {bond.ticker}: quantity is 0 "
-            f"(by_bid_cap={qty_by_bid_cap}, by_shared_cap={qty_by_shared_cap}, "
-            f"by_balance={qty_by_balance})"
+            f"(by_bid_cap={qty_by_bid_cap}, by_balance={qty_by_balance})"
         )
     return qty
 
@@ -180,15 +165,10 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
     if balance is None:
         return
 
-    existing_positions = await fetch_bond_positions(ctx.client, ctx.account_id)
-    existing_position = existing_positions.get(bond.figi)
-
     if target.real_price <= 0:
         return
 
-    target_qty = _compute_bid_quantity(
-        bond, target.real_price, balance, existing_position, ctx
-    )
+    target_qty = _compute_bid_quantity(bond, target.real_price, balance, ctx)
 
     if target_qty == 0:
         if our_order:
