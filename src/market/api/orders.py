@@ -3,6 +3,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from t_tech.invest import (
+    AioRequestError,
     OrderDirection,
     OrderExecutionReportStatus,
     OrderState,
@@ -14,6 +15,7 @@ from t_tech.invest import (
 )
 from t_tech.invest.async_services import AsyncServices
 
+from src.market.api.order_errors import handle_order_error
 from src.market.utils import denormalize_quotation, normalize_quotation
 
 if TYPE_CHECKING:
@@ -33,16 +35,20 @@ async def buy_at_ask(
     client: AsyncServices, account_id: str, bond: "EnrichedBond", quantity: int
 ) -> float | None:
 
-    response = await client.orders.post_order(
-        account_id=account_id,
-        figi=bond.figi,
-        quantity=quantity,
-        price=bond.orderbook.asks[0].price,
-        direction=OrderDirection.ORDER_DIRECTION_BUY,
-        order_type=OrderType.ORDER_TYPE_LIMIT,
-        time_in_force=TimeInForceType.TIME_IN_FORCE_FILL_OR_KILL,
-        price_type=PriceType.PRICE_TYPE_POINT,
-    )
+    try:
+        response = await client.orders.post_order(
+            account_id=account_id,
+            figi=bond.figi,
+            quantity=quantity,
+            price=bond.orderbook.asks[0].price,
+            direction=OrderDirection.ORDER_DIRECTION_BUY,
+            order_type=OrderType.ORDER_TYPE_LIMIT,
+            time_in_force=TimeInForceType.TIME_IN_FORCE_FILL_OR_KILL,
+            price_type=PriceType.PRICE_TYPE_POINT,
+        )
+    except AioRequestError as e:
+        handle_order_error(e, f"Ask buy for {bond.ticker}")
+        return None
     if (
         response.execution_report_status
         != OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL
@@ -62,16 +68,20 @@ async def place_bid_order(
     quantity: int,
     price_percent: float,
 ) -> PostOrderResponse | None:
-    response = await client.orders.post_order(
-        account_id=account_id,
-        figi=bond.figi,
-        quantity=quantity,
-        price=denormalize_quotation(price_percent),
-        direction=OrderDirection.ORDER_DIRECTION_BUY,
-        order_type=OrderType.ORDER_TYPE_LIMIT,
-        time_in_force=TimeInForceType.TIME_IN_FORCE_DAY,
-        price_type=PriceType.PRICE_TYPE_POINT,
-    )
+    try:
+        response = await client.orders.post_order(
+            account_id=account_id,
+            figi=bond.figi,
+            quantity=quantity,
+            price=denormalize_quotation(price_percent),
+            direction=OrderDirection.ORDER_DIRECTION_BUY,
+            order_type=OrderType.ORDER_TYPE_LIMIT,
+            time_in_force=TimeInForceType.TIME_IN_FORCE_DAY,
+            price_type=PriceType.PRICE_TYPE_POINT,
+        )
+    except AioRequestError as e:
+        handle_order_error(e, f"Bid for {bond.ticker}")
+        return None
     if response.execution_report_status not in _ACTIVE_STATUSES:
         logger.warning(
             f"Bid for {bond.ticker} was not accepted"
@@ -89,16 +99,20 @@ async def replace_bid_order(
     quantity: int,
     price_percent: float,
 ) -> PostOrderResponse | None:
-    response = await client.orders.replace_order(
-        ReplaceOrderRequest(
-            account_id=account_id,
-            order_id=old_order_id,
-            idempotency_key=str(uuid.uuid4()),
-            quantity=quantity,
-            price=denormalize_quotation(price_percent),
-            price_type=PriceType.PRICE_TYPE_POINT,
+    try:
+        response = await client.orders.replace_order(
+            ReplaceOrderRequest(
+                account_id=account_id,
+                order_id=old_order_id,
+                idempotency_key=str(uuid.uuid4()),
+                quantity=quantity,
+                price=denormalize_quotation(price_percent),
+                price_type=PriceType.PRICE_TYPE_POINT,
+            )
         )
-    )
+    except AioRequestError as e:
+        handle_order_error(e, f"Replace of bid {old_order_id} for {bond.ticker}")
+        return None
     if response.execution_report_status not in _ACTIVE_STATUSES:
         logger.warning(
             f"Replace of bid {old_order_id} for {bond.ticker} was not accepted"
@@ -111,7 +125,10 @@ async def replace_bid_order(
 async def cancel_bid_order(
     client: AsyncServices, account_id: str, order_id: str
 ) -> None:
-    await client.orders.cancel_order(account_id=account_id, order_id=order_id)
+    try:
+        await client.orders.cancel_order(account_id=account_id, order_id=order_id)
+    except AioRequestError as e:
+        handle_order_error(e, f"Cancel of bid {order_id}")
 
 
 async def fetch_active_bid_orders(
