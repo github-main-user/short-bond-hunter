@@ -102,18 +102,16 @@ async def _place_or_replace_bid(
 
     view = bond.at(price_percent)
     if old is None:
-        logger.info(
-            f"Placed bid for {bond.ticker}: {qty} lots at {view.current_price:.2f}₽ "
-            f"(yield {view.annual_yield:.2f}%, cost {view.real_price:.2f}₽, "
-            f"top bid {bond.bid.current_price:.2f}₽)"
-        )
+        head = f"Placed bid for {bond.ticker}: {qty} lots at {view.current_price:.2f}₽"
     else:
-        logger.info(
+        head = (
             f"Replaced bid for {bond.ticker}: {old.order_id} -> {response.order_id}, "
-            f"qty={qty}, price {view.current_price:.2f}₽ "
-            f"(yield {view.annual_yield:.2f}%, cost {view.real_price:.2f}₽, "
-            f"top bid {bond.bid.current_price:.2f}₽)"
+            f"qty={qty}, price {view.current_price:.2f}₽"
         )
+    logger.info(
+        f"{head} (yield {view.annual_yield:.2f}%, cost {view.real_price:.2f}₽, "
+        f"top bid {bond.bid.current_price:.2f}₽)"
+    )
 
     if response.lots_executed > 0:
         await _record_fill(ctx, bond, response.lots_executed, price_percent)
