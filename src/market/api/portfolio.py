@@ -3,7 +3,7 @@ import logging
 from t_tech.invest import PortfolioPosition
 from t_tech.invest.async_services import AsyncServices
 
-from src.market.utils import normalize_quotation
+from src.market.utils import to_float
 
 logger = logging.getLogger(__name__)
 
@@ -25,4 +25,4 @@ async def fetch_account_balance_rub(
             f"No money positions with currency RUB found for account {account_id}"
         )
         return
-    return normalize_quotation(money_rub)
+    return to_float(money_rub)

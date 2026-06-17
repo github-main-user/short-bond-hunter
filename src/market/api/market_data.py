@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from t_tech.invest import CandleInterval, OrderBook
 from t_tech.invest.async_services import AsyncServices
 
-from src.market.utils import normalize_quotation
+from src.market.utils import to_float
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ async def fetch_tmon_etf_price_at(
         if not response.last_prices:
             logger.warning(f"Can't fetch TMON@ last price at {target_time}")
             return None
-        return normalize_quotation(response.last_prices[0].price)
+        return to_float(response.last_prices[0].price)
 
     day_start = target_time.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = day_start + timedelta(hours=23, minutes=59, seconds=59)
@@ -49,4 +49,4 @@ async def fetch_tmon_etf_price_at(
         )
         return None
     candle = response.candles[0]
-    return (normalize_quotation(candle.open) + normalize_quotation(candle.close)) / 2
+    return (to_float(candle.open) + to_float(candle.close)) / 2

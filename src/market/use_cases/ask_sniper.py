@@ -13,7 +13,7 @@ from src.market.api import (
 from src.market.context import MarketContext
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_ask_snipe_notification
-from src.market.utils import normalize_quotation
+from src.market.utils import to_float
 from src.stats.models import PurchaseStrategy
 from src.telegram import notify
 
@@ -52,9 +52,9 @@ def _compute_purchase_quantity(
     qty_by_purchase_cap = int(settings.ASK_MAX_SUM_PER_PURCHASE // bond.ask.real_price)
 
     if existing_position:
-        current_value = normalize_quotation(
+        current_value = to_float(
             existing_position.quantity
-        ) * normalize_quotation(existing_position.current_price)
+        ) * to_float(existing_position.current_price)
     else:
         current_value = 0.0
 
