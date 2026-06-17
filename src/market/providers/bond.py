@@ -21,6 +21,7 @@ from src.market.api import (
     fetch_raw_bonds,
     fetch_user_commission,
 )
+from src.market.bond_catalog import BondCatalog
 from src.market.domain import EnrichedBond
 
 logger = logging.getLogger(__name__)
@@ -47,8 +48,8 @@ def _filter_bonds(bonds: list[Bond], maximum_days: int) -> list[Bond]:
 
 
 class BondProvider:
-    def __init__(self) -> None:
-        self.figi_to_bond: dict[str, EnrichedBond] = {}
+    def __init__(self, catalog: BondCatalog) -> None:
+        self._catalog = catalog
 
     async def _fetch_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
         user_commission = await fetch_user_commission(client)
@@ -83,7 +84,7 @@ class BondProvider:
         while True:
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 bonds = await self._fetch_tradable_bonds(client)
-                self.figi_to_bond = {b.figi: b for b in bonds}
+                self._catalog.replace_all(bonds)
                 for bond in bonds:
                     yield bond
                 async for bond in self._stream_price_updates(client, bonds):
@@ -114,7 +115,7 @@ class BondProvider:
                         logger.debug("Skipped market data: no orderbook")
                         continue
 
-                    bond = self.figi_to_bond.get(marketdata.orderbook.figi)
+                    bond = self._catalog.get(marketdata.orderbook.figi)
                     if not bond:
                         logger.debug(
                             f"Skipped update for bond {marketdata.orderbook.figi} (figi):"

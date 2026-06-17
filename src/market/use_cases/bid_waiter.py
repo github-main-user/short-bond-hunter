@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Iterable
 from datetime import datetime, timezone
 
 from t_tech.invest import OrderExecutionReportStatus
@@ -138,22 +137,22 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
     if target_price is None:
         return
 
-    target = bond.at(target_price)
+    target_view = bond.at(target_price)
 
     if not (
         settings.BID_MIN_ANNUAL_YIELD
-        <= target.annual_yield
+        <= target_view.annual_yield
         <= settings.BID_MAX_ANNUAL_YIELD
     ):
         if our_order:
             logger.info(
-                f"Yield {target.annual_yield:.2f}% for {bond.ticker} is outside the bid range "
+                f"Yield {target_view.annual_yield:.2f}% for {bond.ticker} is outside the bid range "
                 f"[{settings.BID_MIN_ANNUAL_YIELD}%, {settings.BID_MAX_ANNUAL_YIELD}%]; cancelling"
             )
             await _cancel_bid(ctx, bond, our_order)
         else:
             logger.debug(
-                f"Skipped bid for {bond.ticker}: target yield {target.annual_yield:.2f}% "
+                f"Skipped bid for {bond.ticker}: target yield {target_view.annual_yield:.2f}% "
                 f"is outside the bid range "
                 f"[{settings.BID_MIN_ANNUAL_YIELD}%, {settings.BID_MAX_ANNUAL_YIELD}%]"
             )
@@ -163,10 +162,10 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
     if balance is None:
         return
 
-    if target.real_price <= 0:
+    if target_view.real_price <= 0:
         return
 
-    target_qty = _compute_bid_quantity(bond, target.real_price, balance, ctx)
+    target_qty = _compute_bid_quantity(bond, target_view.real_price, balance, ctx)
 
     if target_qty == 0:
         if our_order:
@@ -181,7 +180,7 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
     if our_order.price_percent == target_price and our_order.quantity == target_qty:
         logger.debug(
             f"Bid for {bond.ticker} already at target: "
-            f"{target.current_price:.2f}₽, qty={target_qty}"
+            f"{target_view.current_price:.2f}₽, qty={target_qty}"
         )
         return
 
@@ -189,10 +188,7 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
 
 
 async def _record_fill(
-    ctx: MarketContext,
-    bond: EnrichedBond,
-    lots_filled: int,
-    price_percent: float,
+    ctx: MarketContext, bond: EnrichedBond, lots_filled: int, price_percent: float
 ) -> None:
     view = bond.at(price_percent)
     logger.info(
@@ -225,24 +221,23 @@ async def _record_fill(
 async def process_bid_order_state(
     ctx: MarketContext,
     event: OrderStateStreamOrderState,
-    figi_to_bond: dict[str, EnrichedBond],
 ) -> None:
-    existing = ctx.bid_registry.find_by_order_id(event.order_id)
-    if existing is None:
+    existing_order = ctx.bid_registry.find_by_order_id(event.order_id)
+    if existing_order is None:
         return
 
-    bond = figi_to_bond.get(existing.figi)
-    name = bond.ticker if bond else existing.figi
+    bond = ctx.catalog.get(existing_order.figi)
+    ticker_or_figi = bond.ticker if bond else existing_order.figi
 
-    newly_filled = existing.quantity - event.lots_left - event.lots_cancelled
+    newly_filled = existing_order.quantity - event.lots_left - event.lots_cancelled
     if newly_filled > 0:
         if bond is None:
             logger.warning(
-                f"Filled order {event.order_id} for unknown figi {existing.figi}; "
+                f"Filled order {event.order_id} for unknown figi {existing_order.figi}; "
                 f"skipping purchase record"
             )
         else:
-            await _record_fill(ctx, bond, newly_filled, existing.price_percent)
+            await _record_fill(ctx, bond, newly_filled, existing_order.price_percent)
 
     status = event.execution_report_status
     if status in (
@@ -250,16 +245,20 @@ async def process_bid_order_state(
         OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_CANCELLED,
         OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_REJECTED,
     ):
-        ctx.bid_registry.remove(existing.figi, event.order_id)
+        ctx.bid_registry.remove(existing_order.figi, event.order_id)
         status_name = status.name.removeprefix("EXECUTION_REPORT_STATUS_")
         logger.info(
-            f"Bid for {name} removed from registry: {event.order_id} ({status_name})"
+            f"Bid for {ticker_or_figi} removed from registry: {event.order_id} ({status_name})"
         )
     elif status == OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL:
-        ctx.bid_registry.set_quantity(existing.figi, event.order_id, event.lots_left)
-        logger.info(f"Bid for {name} partially filled: {event.lots_left} lots left")
+        ctx.bid_registry.set_quantity(
+            existing_order.figi, event.order_id, event.lots_left
+        )
+        logger.info(
+            f"Bid for {ticker_or_figi} partially filled: {event.lots_left} lots left"
+        )
 
 
-async def refresh_all_bids(ctx: MarketContext, bonds: Iterable[EnrichedBond]) -> None:
-    for bond in list(bonds):
+async def refresh_all_bids(ctx: MarketContext) -> None:
+    for bond in ctx.catalog.all():
         await process_bid_waiter(ctx, bond)

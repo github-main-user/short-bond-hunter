@@ -9,6 +9,7 @@ from src.market.api import fetch_account_id, fetch_active_bid_orders
 from src.market.context import MarketContext
 from src.market.domain import MaturityEventType
 from src.market.bid_order_registry import ActiveBidOrder, BidOrderRegistry
+from src.market.bond_catalog import BondCatalog
 from src.market.providers import BondProvider, MaturityProvider, OrderStateProvider
 from src.market.use_cases import (
     process_ask_sniper,
@@ -53,6 +54,7 @@ async def start_market_session() -> None:
     purchase_repo = PurchaseRepository()
     maturity_repo = MaturityRepository()
     bid_registry = BidOrderRegistry()
+    catalog = BondCatalog()
 
     async with AsyncClient(settings.TINVEST_TOKEN) as client:
         account_id = await fetch_account_id(client)
@@ -63,11 +65,12 @@ async def start_market_session() -> None:
             client=client,
             account_id=account_id,
             bid_registry=bid_registry,
+            catalog=catalog,
             purchase_repo=purchase_repo,
             maturity_repo=maturity_repo,
         )
 
-        bond_provider = BondProvider()
+        bond_provider = BondProvider(catalog)
         maturity_provider = MaturityProvider(account_id)
         order_state_provider = OrderStateProvider(account_id)
 
@@ -87,7 +90,7 @@ async def start_market_session() -> None:
                 try:
                     await process_maturity(ctx, event)
                     if event.event_type == MaturityEventType.REPAYMENT:
-                        await refresh_all_bids(ctx, bond_provider.figi_to_bond.values())
+                        await refresh_all_bids(ctx)
                 except Exception:
                     logger.exception(
                         f"Failed to process maturity event for {event.bond_figi}"
@@ -96,9 +99,7 @@ async def start_market_session() -> None:
         async def order_state_loop():
             async for event in order_state_provider.stream():
                 try:
-                    await process_bid_order_state(
-                        ctx, event, bond_provider.figi_to_bond
-                    )
+                    await process_bid_order_state(ctx, event)
                 except Exception:
                     logger.exception(
                         f"Failed to process order state for {event.order_id}"
