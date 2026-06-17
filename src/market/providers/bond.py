@@ -101,8 +101,7 @@ class BondProvider:
                     ],
                 )
             )
-            while True:
-                await asyncio.sleep(1)
+            await asyncio.Event().wait()
 
         logger.info(f"Subscribed to {len(bonds)} bonds")
 
@@ -123,11 +122,10 @@ class BondProvider:
                         )
                         continue
 
-                    old_ask = bond.ask.real_price
-                    old_bid = bond.bid.real_price
+                    before = (bond.ask.real_price, bond.bid.real_price)
                     bond.update(marketdata.orderbook)
 
-                    if old_ask != bond.ask.real_price or old_bid != bond.bid.real_price:
+                    if (bond.ask.real_price, bond.bid.real_price) != before:
                         yield bond
         except TimeoutError:
             logger.info("Bonds update interval reached. Re-fetching...")

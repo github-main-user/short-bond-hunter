@@ -15,7 +15,7 @@ async def _send_telegram_message(message: str):
     token = settings.TELEGRAM_BOT_TOKEN
     chat_id = settings.TELEGRAM_CHAT_ID
 
-    if None in (token, chat_id):
+    if not token or not chat_id:
         raise TelegramNotConfiguredError("Telegram bot token or chat ID is not set.")
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
