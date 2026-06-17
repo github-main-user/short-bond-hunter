@@ -24,10 +24,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-_ACTIVE_STATUSES = {
+_ACCEPTED_ORDER_STATUSES = {
     OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
     OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
     OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL,
+}
+
+_RESTING_ORDER_STATUSES = {
+    OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
+    OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
 }
 
 
@@ -82,7 +87,7 @@ async def place_bid_order(
     except AioRequestError as e:
         handle_order_error(e, f"Bid for {bond.ticker}")
         return None
-    if response.execution_report_status not in _ACTIVE_STATUSES:
+    if response.execution_report_status not in _ACCEPTED_ORDER_STATUSES:
         logger.warning(
             f"Bid for {bond.ticker} was not accepted"
             f" (status: {response.execution_report_status})"
@@ -113,7 +118,7 @@ async def replace_bid_order(
     except AioRequestError as e:
         handle_order_error(e, f"Replace of bid {old_order_id} for {bond.ticker}")
         return None
-    if response.execution_report_status not in _ACTIVE_STATUSES:
+    if response.execution_report_status not in _ACCEPTED_ORDER_STATUSES:
         logger.warning(
             f"Replace of bid {old_order_id} for {bond.ticker} was not accepted"
             f" (status: {response.execution_report_status})"
@@ -138,11 +143,7 @@ async def fetch_active_bid_orders(
     return [
         order
         for order in response.orders
-        if order.execution_report_status
-        in (
-            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
-            OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
-        )
+        if order.execution_report_status in _RESTING_ORDER_STATUSES
         and order.direction == OrderDirection.ORDER_DIRECTION_BUY
         and order.order_type == OrderType.ORDER_TYPE_LIMIT
     ]
