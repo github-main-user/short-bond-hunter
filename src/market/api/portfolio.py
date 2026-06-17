@@ -24,5 +24,5 @@ async def fetch_account_balance_rub(
         logger.warning(
             f"No money positions with currency RUB found for account {account_id}"
         )
-        return
+        return None
     return to_float(money_rub)

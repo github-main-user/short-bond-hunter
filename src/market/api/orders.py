@@ -104,6 +104,7 @@ async def replace_bid_order(
     quantity: int,
     price_percent: float,
 ) -> PostOrderResponse | None:
+    context = f"Replace of bid {old_order_id} for {bond.ticker}"
     try:
         response = await client.orders.replace_order(
             ReplaceOrderRequest(
@@ -116,11 +117,11 @@ async def replace_bid_order(
             )
         )
     except AioRequestError as e:
-        handle_order_error(e, f"Replace of bid {old_order_id} for {bond.ticker}")
+        handle_order_error(e, context)
         return None
     if response.execution_report_status not in _ACCEPTED_ORDER_STATUSES:
         logger.warning(
-            f"Replace of bid {old_order_id} for {bond.ticker} was not accepted"
+            f"{context} was not accepted"
             f" (status: {response.execution_report_status})"
         )
         return None
