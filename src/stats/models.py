@@ -1,18 +1,14 @@
 from datetime import datetime, timezone
-from enum import Enum, StrEnum
+from enum import IntEnum, StrEnum
 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class RiskLevel(Enum):
-    UNSPECIFIED = "UNSPECIFIED"
-    LOW = "LOW"
-    MODERATE = "MODERATE"
-    HIGH = "HIGH"
-
-    @classmethod  # type: ignore
-    def from_int(cls, value: int) -> "RiskLevel":
-        return [cls.UNSPECIFIED, cls.LOW, cls.MODERATE, cls.HIGH][value]
+class RiskLevel(IntEnum):
+    UNSPECIFIED = 0
+    LOW = 1
+    MODERATE = 2
+    HIGH = 3
 
 
 class PurchaseStrategy(StrEnum):
