@@ -4,6 +4,12 @@ from t_tech.invest.async_services import AsyncServices
 
 logger = logging.getLogger(__name__)
 
+_TBANK_TARIFF_COMMISSION = {
+    "investor": 0.3,
+    "trader": 0.05,
+    "premium": 0.04,
+}
+
 
 async def fetch_account_id(client: AsyncServices) -> str:
     response = await client.users.get_accounts()
@@ -14,12 +20,6 @@ async def fetch_account_id(client: AsyncServices) -> str:
 
 
 async def fetch_user_commission(client: AsyncServices) -> float:
-    _TBANK_TARIFF_COMMISSION = {
-        "investor": 0.3,
-        "trader": 0.05,
-        "premium": 0.04,
-    }
-
     response = await client.users.get_info()
 
     tariff_percent = _TBANK_TARIFF_COMMISSION[response.tariff]
