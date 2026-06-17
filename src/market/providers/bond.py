@@ -1,6 +1,6 @@
 import asyncio
 import logging
-
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
 from t_tech.invest import (
@@ -79,7 +79,7 @@ class BondProvider:
         ]
         return bonds
 
-    async def stream(self):
+    async def stream(self) -> AsyncGenerator[EnrichedBond]:
         while True:
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 bonds = await self._fetch_tradable_bonds(client)
@@ -91,7 +91,7 @@ class BondProvider:
 
     async def _stream_price_updates(
         self, client: AsyncServices, bonds: list[EnrichedBond]
-    ):
+    ) -> AsyncGenerator[EnrichedBond]:
         async def request_iterator():
             yield MarketDataRequest(
                 subscribe_order_book_request=SubscribeOrderBookRequest(

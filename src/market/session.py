@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from t_tech.invest import AsyncClient
+from t_tech.invest.async_services import AsyncServices
 
 from src.config import settings
 from src.market.api import fetch_account_id, fetch_active_bid_orders
@@ -33,7 +34,7 @@ async def _with_retry(fn, *args, **kwargs) -> None:
 
 
 async def _sync_bid_registry_from_broker(
-    client, account_id: str, bid_registry: BidOrderRegistry
+    client: AsyncServices, account_id: str, bid_registry: BidOrderRegistry
 ) -> None:
     existing = await fetch_active_bid_orders(client, account_id)
     for order in existing:

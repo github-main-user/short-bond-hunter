@@ -39,4 +39,4 @@ async def fetch_bond_by_figi(client: AsyncServices, figi: str) -> Bond | None:
         return response.instrument
     except AioRequestError:
         logger.info(f"Got no bond by figi: {figi}")
-        return
+        return None
