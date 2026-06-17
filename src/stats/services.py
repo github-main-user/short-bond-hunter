@@ -7,7 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 _REPORTS = {
-    "purchase": (lambda df: df, printers.print_per_purchase, plotters.plot_per_purchase),
+    "purchase": (
+        lambda df: df,
+        printers.print_per_purchase,
+        plotters.plot_per_purchase,
+    ),
     "month": (calculators.per_month, printers.print_per_month, plotters.plot_per_month),
     "bond": (calculators.per_bond, printers.print_per_bond, plotters.plot_per_bond),
 }

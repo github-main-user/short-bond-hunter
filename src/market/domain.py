@@ -81,11 +81,7 @@ class EnrichedBond:
 
     @property
     def ask_price_percent(self) -> float:
-        return (
-            to_float(self.orderbook.asks[0].price)
-            if self.orderbook.asks
-            else 0
-        )
+        return to_float(self.orderbook.asks[0].price) if self.orderbook.asks else 0
 
     @property
     def ask_quantity(self) -> int:
@@ -93,11 +89,7 @@ class EnrichedBond:
 
     @property
     def bid_price_percent(self) -> float:
-        return (
-            to_float(self.orderbook.bids[0].price)
-            if self.orderbook.bids
-            else 0
-        )
+        return to_float(self.orderbook.bids[0].price) if self.orderbook.bids else 0
 
     @property
     def bid_quantity(self) -> int:

@@ -121,8 +121,7 @@ async def replace_bid_order(
         return None
     if response.execution_report_status not in _ACCEPTED_ORDER_STATUSES:
         logger.warning(
-            f"{context} was not accepted"
-            f" (status: {response.execution_report_status})"
+            f"{context} was not accepted (status: {response.execution_report_status})"
         )
         return None
     return response
