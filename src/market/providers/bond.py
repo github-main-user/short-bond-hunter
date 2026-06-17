@@ -50,7 +50,7 @@ class BondProvider:
     def __init__(self) -> None:
         self.figi_to_bond: dict[str, EnrichedBond] = {}
 
-    async def _get_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
+    async def _fetch_tradable_bonds(self, client: AsyncServices) -> list[EnrichedBond]:
         user_commission = await fetch_user_commission(client)
         raw_bonds = await fetch_raw_bonds(client)
         logger.info(f"Got {len(raw_bonds)} bonds")
@@ -77,13 +77,13 @@ class BondProvider:
             )
             for bond, coupon_sum, orderbook in zip(filtered, coupon_sums, orderbooks)
         ]
-        self.figi_to_bond = {b.figi: b for b in bonds}
         return bonds
 
     async def stream(self):
         while True:
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
-                bonds = await self._get_tradable_bonds(client)
+                bonds = await self._fetch_tradable_bonds(client)
+                self.figi_to_bond = {b.figi: b for b in bonds}
                 for bond in bonds:
                     yield bond
                 async for bond in self._stream_price_updates(client, bonds):
