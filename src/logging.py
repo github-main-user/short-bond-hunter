@@ -2,6 +2,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from logging.handlers import TimedRotatingFileHandler
 
+from src.config import BASE_DIR
+
 
 class _TzFormatter(logging.Formatter):
     _tz = timezone(timedelta(hours=3))
@@ -19,8 +21,10 @@ def setup_logging():
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.INFO)
 
+    log_dir = BASE_DIR / "logs"
+    log_dir.mkdir(exist_ok=True)
     file_handler = TimedRotatingFileHandler(
-        "logs/app.log", when="midnight", backupCount=14
+        log_dir / "app.log", when="midnight", backupCount=14
     )
     file_handler.setLevel(logging.DEBUG)
 

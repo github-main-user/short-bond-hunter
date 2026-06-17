@@ -128,13 +128,12 @@ class MaturityRepository:
     def update_coupon(
         self,
         bond_figi: str,
-        coupon_received: float | None = None,
+        coupon_received: float,
     ) -> None:
         with SessionLocal() as session:
             record = session.query(BondMaturity).filter_by(bond_figi=bond_figi).first()
             if record:
-                if coupon_received is not None:
-                    record.coupon_received = coupon_received
+                record.coupon_received = coupon_received
                 session.commit()
 
     def get_all(self) -> list[BondMaturity]:

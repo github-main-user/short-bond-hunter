@@ -234,15 +234,15 @@ async def process_bid_order_state(
     bond = figi_to_bond.get(existing.figi)
     name = bond.ticker if bond else existing.figi
 
-    delta_lots = existing.quantity - event.lots_left - event.lots_cancelled
-    if delta_lots > 0:
+    newly_filled = existing.quantity - event.lots_left - event.lots_cancelled
+    if newly_filled > 0:
         if bond is None:
             logger.warning(
                 f"Filled order {event.order_id} for unknown figi {existing.figi}; "
                 f"skipping purchase record"
             )
         else:
-            await _record_fill(ctx, bond, delta_lots, existing.price_percent)
+            await _record_fill(ctx, bond, newly_filled, existing.price_percent)
 
     status = event.execution_report_status
     if status in (
