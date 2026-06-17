@@ -109,10 +109,11 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     if buy_price is None:
         return
 
-    # calculating real_buy_price using our commission here, instead of using commission
+    # calculating total_buy_price using our commission here, instead of using commission
     # provided by response itself - because in response's commission is always 0,
     # broker itself calculates commission in separate operation
-    real_buy_price = buy_price + (ask.commission * quantity_to_buy)
+    total_buy_price = buy_price + (ask.commission * quantity_to_buy)
+    real_price_per_lot = total_buy_price / quantity_to_buy
 
     tmon_price = await fetch_tmon_etf_price_at(
         ctx.client, datetime.now(tz=timezone.utc)
@@ -126,7 +127,7 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
         price=ask.current_price,
         aci_value=bond.aci_value,
         commission_percent=bond.commission_percent,
-        real_price=real_buy_price / quantity_to_buy,
+        real_price=real_price_per_lot,
         coupons_sum=bond.coupons_sum,
         risk_level=bond.risk_level,
         tmon_price=tmon_price,
@@ -136,6 +137,6 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
 
     remaining_balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     message = compose_ask_snipe_notification(
-        bond, quantity_to_buy, real_buy_price, remaining_balance
+        bond, quantity_to_buy, total_buy_price, remaining_balance
     )
     await notify(message)
