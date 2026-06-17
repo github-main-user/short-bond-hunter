@@ -52,9 +52,9 @@ def _compute_purchase_quantity(
     qty_by_purchase_cap = int(settings.ASK_MAX_SUM_PER_PURCHASE // bond.ask.real_price)
 
     if existing_position:
-        current_value = to_float(
-            existing_position.quantity
-        ) * to_float(existing_position.current_price)
+        current_value = to_float(existing_position.quantity) * to_float(
+            existing_position.current_price
+        )
     else:
         current_value = 0.0
 
