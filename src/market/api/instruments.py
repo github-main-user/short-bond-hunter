@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from t_tech.invest import AioRequestError, Bond, InstrumentIdType
 from t_tech.invest.async_services import AsyncServices
 
-from src.market.utils import normalize_quotation
+from src.market.utils import to_float
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ async def fetch_coupons_sum(
     coupon_resp = await client.instruments.get_bond_coupons(
         figi=figi, from_=from_, to=to
     )
-    return sum(normalize_quotation(c.pay_one_bond) for c in coupon_resp.events)
+    return sum(to_float(c.pay_one_bond) for c in coupon_resp.events)
 
 
 async def fetch_raw_bonds(client: AsyncServices) -> list[Bond]:

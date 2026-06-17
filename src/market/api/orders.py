@@ -16,7 +16,7 @@ from t_tech.invest import (
 from t_tech.invest.async_services import AsyncServices
 
 from src.market.api.order_errors import handle_order_error
-from src.market.utils import denormalize_quotation, normalize_quotation
+from src.market.utils import from_float, to_float
 
 if TYPE_CHECKING:
     from src.market.domain import EnrichedBond
@@ -58,7 +58,7 @@ async def buy_at_ask(
             f" (status: {response.execution_report_status})"
         )
         return None
-    return normalize_quotation(response.total_order_amount) * bond.nominal / 100
+    return to_float(response.total_order_amount) * bond.nominal / 100
 
 
 async def place_bid_order(
@@ -73,7 +73,7 @@ async def place_bid_order(
             account_id=account_id,
             figi=bond.figi,
             quantity=quantity,
-            price=denormalize_quotation(price_percent),
+            price=from_float(price_percent),
             direction=OrderDirection.ORDER_DIRECTION_BUY,
             order_type=OrderType.ORDER_TYPE_LIMIT,
             time_in_force=TimeInForceType.TIME_IN_FORCE_DAY,
@@ -106,7 +106,7 @@ async def replace_bid_order(
                 order_id=old_order_id,
                 idempotency_key=str(uuid.uuid4()),
                 quantity=quantity,
-                price=denormalize_quotation(price_percent),
+                price=from_float(price_percent),
                 price_type=PriceType.PRICE_TYPE_POINT,
             )
         )

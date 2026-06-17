@@ -16,7 +16,7 @@ from src.market.use_cases import (
     process_bid_order_state,
     refresh_all_bids,
 )
-from src.market.utils import normalize_quotation
+from src.market.utils import to_float
 from src.stats import MaturityRepository, PurchaseRepository
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ async def _sync_bid_registry_from_broker(
             ActiveBidOrder(
                 order_id=order.order_id,
                 figi=order.figi,
-                price_percent=normalize_quotation(order.initial_security_price),
+                price_percent=to_float(order.initial_security_price),
                 quantity=order.lots_requested - order.lots_executed,
             )
         )

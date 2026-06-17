@@ -5,7 +5,7 @@ from typing import Self
 
 from t_tech.invest import Bond, OrderBook
 
-from .utils import normalize_quotation
+from .utils import to_float
 
 
 class MaturityEventType(StrEnum):
@@ -82,7 +82,7 @@ class EnrichedBond:
     @property
     def ask_price_percent(self) -> float:
         return (
-            normalize_quotation(self.orderbook.asks[0].price)
+            to_float(self.orderbook.asks[0].price)
             if self.orderbook.asks
             else 0
         )
@@ -94,7 +94,7 @@ class EnrichedBond:
     @property
     def bid_price_percent(self) -> float:
         return (
-            normalize_quotation(self.orderbook.bids[0].price)
+            to_float(self.orderbook.bids[0].price)
             if self.orderbook.bids
             else 0
         )
@@ -123,8 +123,8 @@ class EnrichedBond:
             name=bond.name,
             figi=bond.figi,
             ticker=bond.ticker,
-            nominal=normalize_quotation(bond.nominal),
-            aci_value=normalize_quotation(bond.aci_value),
+            nominal=to_float(bond.nominal),
+            aci_value=to_float(bond.aci_value),
             maturity_date=bond.maturity_date,
             risk_level=bond.risk_level,
             is_unlimited=bond.perpetual_flag,
@@ -134,7 +134,7 @@ class EnrichedBond:
             trading_status=bond.trading_status,
             commission_percent=commission_percent,
             coupons_sum=coupons_sum,
-            min_price_increment=normalize_quotation(bond.min_price_increment),
+            min_price_increment=to_float(bond.min_price_increment),
             orderbook=orderbook,
         )
 

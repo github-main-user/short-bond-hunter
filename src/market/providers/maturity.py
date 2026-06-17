@@ -8,7 +8,7 @@ from t_tech.invest import AsyncClient, OperationType
 from src.config import settings
 from src.market.api import fetch_operations
 from src.market.domain import MaturityEvent, MaturityEventType
-from src.market.utils import normalize_quotation
+from src.market.utils import to_float
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class MaturityProvider:
                     yield MaturityEvent(
                         event_type=event_type,
                         bond_figi=operation.figi,
-                        payment=normalize_quotation(operation.payment),
+                        payment=to_float(operation.payment),
                         operation_date=operation.date,
                     )
 
