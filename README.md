@@ -1,63 +1,121 @@
 # Short Bond Hunter
 
-This is a simple bot that automatically purchases bonds based on user-defined criteria: a minimum calculated annual yield and a maximum number of days to maturity.
+A bot that automatically trades short-maturity ruble bonds on the Moscow Exchange (MOEX)
+through the T-Bank brokerage, based on user-defined criteria: a minimum calculated annual
+yield and a maximum number of days to maturity.
 
-The bot interacts with the Moscow Exchange (MOEX) through the T-Bank brokerage.
+It runs two independent strategies in parallel, tracks coupon and principal payments as
+bonds mature, persists every purchase and payout to a local database, and can report your
+realized performance against a money-market benchmark (the `TMON` ETF).
+
+
+## Strategies
+
+The bot continuously streams the order book for the eligible bonds and, on every price
+change, runs both strategies:
+
+- **Ask sniper** — buys immediately at the current ask with a market-like
+  `FILL_OR_KILL` limit order whenever the annual yield falls in
+  `[ASK_MIN_ANNUAL_YIELD, ASK_MAX_ANNUAL_YIELD]`. All-or-nothing: if the full order
+  can't be filled instantly, it's cancelled entirely.
+- **Bid waiter** — keeps a single resting limit bid one price-increment above the top
+  bid whenever the projected yield falls in `[BID_MIN_ANNUAL_YIELD, BID_MAX_ANNUAL_YIELD]`.
+  It places, replaces, or cancels the order as the book and yield move, and waits to be
+  filled. Cheaper entry than the sniper, but no guarantee of execution.
+
+Annual yield is computed from the full return (nominal + remaining coupons) against the
+real all-in cost (price + accrued interest + commission), annualized over the days left
+to maturity.
 
 
 ## Workflow
 
-1.  **Fetch Bonds:** The bot retrieves a list of all available bonds from the exchange.
-2.  **Filter Bonds:** It filters the bonds based on risk level (only "LOW" and "MEDIUM" risk bonds are considered) and the specified maximum days to maturity. This typically results in a small number of eligible bonds.
-3.  **Subscribe to Order Book:** The bot subscribes to the order book for the filtered bonds to receive real-time price updates.
-4.  **Calculate Yield and Place Orders:** With each price change, the bot recalculates the annual yield. If the yield meets the user-defined threshold, it places a market order to buy the bond.
-5.  **Telegram Notifications (Optional):** You can configure the bot to send notifications to a Telegram channel by providing a valid bot token.
+The session runs three concurrent streams:
 
-The bot periodically refreshes the list of bonds to ensure the maturity dates remain within the specified range.
-Purchases are executed on an all-or-nothing basis: if the full order cannot be filled immediately, it is cancelled entirely (`TIME_IN_FORCE_FILL_OR_KILL`).
-You can also blacklist specific bonds by their ticker symbol to exclude them from trading.
+1. **Order book stream** — fetches all eligible bonds, subscribes to their order books,
+   and feeds every price tick to the ask sniper and bid waiter. Bonds are re-fetched
+   every `BOND_REFRESH_INTERVAL_HOURS` to keep maturities, accrued interest, and the
+   eligible set fresh.
+2. **Maturity stream** — watches account operations for coupon and principal payments,
+   records them, and (on repayment) refreshes resting bids since freed-up cash changes
+   the affordable quantity.
+3. **Order-state stream** — tracks resting bid orders, recording fills (full or partial)
+   and removing cancelled/rejected orders from the registry.
+
+Bonds are eligible only if they are RUB-denominated, non-perpetual, not qualified-investor
+only, mature within `DAYS_TO_MATURITY_MAX` days, and carry **LOW** or **MEDIUM** risk.
+You can also blacklist specific tickers via `BLACK_LIST_TICKERS`.
+
+Every purchase (tagged by strategy) and every maturity payout is written to a SQLite
+database, along with the `TMON` ETF price at the time, so performance can later be compared
+against simply holding a money-market fund. Telegram notifications are optional.
 
 
 ## Getting Started
 
-Before using the bot, you need to obtain an investment token from T-Bank: [https://developer.tbank.ru/invest/intro/intro/token](https://developer.tbank.ru/invest/intro/intro/token)
+Before using the bot, you need an investment token from T-Bank:
+[https://developer.tbank.ru/invest/intro/intro/token](https://developer.tbank.ru/invest/intro/intro/token)
 
 
 ## Configuration
 
-The bot is configured using environment variables. Copy the `.env.example` file to `.env` and fill in the values:
+The bot is configured using environment variables. Copy `.env.example` to `.env` and fill
+in the values:
 
 ```bash
 cp .env.example .env
 ```
 
-Here's a description of the available environment variables:
+- `TINVEST_TOKEN`: Your T-Bank investment token.
+- `TELEGRAM_BOT_TOKEN`: (Optional) Token for your Telegram bot, if you want notifications.
+- `TELEGRAM_CHAT_ID`: (Optional) Your Telegram chat ID. To find it, send a message to your
+  bot and run `curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`.
 
-- `TINVEST_TOKEN`: Your T-Bank investment token. Obtain it from [https://developer.tbank.ru/invest/intro/intro/token](https://developer.tbank.ru/invest/intro/intro/token).
-- `TELEGRAM_BOT_TOKEN`: (Optional) Token for your Telegram chat bot, if you want to receive notifications.
-- `TELEGRAM_CHAT_ID`: (Optional) Your Telegram chat ID. To find it, send a message to your bot and then use `curl https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates` in your terminal.
+### Market setup
 
-
-### Market Setup
-
-- `DAYS_TO_MATURITY_MAX`: Maximum number of days to maturity for a bond to be considered.
-- `ASK_ANNUAL_YIELD_MIN`: Minimum annual yield in percent for the ask sniper to purchase a bond.
-- `ASK_ANNUAL_YIELD_MAX`: Maximum annual yield in percent for the ask sniper to purchase a bond.
-- `BID_ANNUAL_YIELD_MIN`: Minimum annual yield in percent for the bid waiter to place a limit order.
-- `BID_ANNUAL_YIELD_MAX`: Maximum annual yield in percent for the bid waiter to place a limit order.
-- `MAX_SUM_PER_BOND`: Maximum total sum in RUB for bonds of a single ticker that the bot can hold (shared cap).
-- `ASK_BOND_SUM_MAX_PER_PURCHASE`: Maximum sum in RUB for bonds of a single ticker per one ask sniper purchase.
-- `BID_MAX_SUM_PER_BOND`: Maximum sum in RUB for bonds of a single ticker held by the bid waiter.
-- `BLACK_LIST_TICKERS`: A JSON array of ticker symbols to exclude from trading (e.g., `'["RU000A105JN7", "RU000A10A3R1"]'`).
+- `DAYS_TO_MATURITY_MAX`: Maximum days to maturity for a bond to be considered.
+- `ASK_MIN_ANNUAL_YIELD` / `ASK_MAX_ANNUAL_YIELD`: Annual yield range (%) for the ask sniper.
+- `BID_MIN_ANNUAL_YIELD` / `BID_MAX_ANNUAL_YIELD`: Annual yield range (%) for the bid waiter.
+- `ASK_MAX_SUM_PER_BOND`: Maximum total RUB held per ticker by the ask sniper (shared cap).
+- `ASK_MAX_SUM_PER_PURCHASE`: Maximum RUB per single ask-sniper purchase.
+- `BID_MAX_SUM_PER_BOND`: Maximum total RUB per ticker held by the bid waiter.
+- `BLACK_LIST_TICKERS`: JSON array of tickers to exclude (e.g. `'["RU000A105JN7", "RU000A10A3R1"]'`).
+- `BOND_REFRESH_INTERVAL_HOURS`: How often to re-fetch the bond list (default `4`).
 
 
 ## Installation & Start
 
 Install dependencies:
+
 ```bash
 uv sync
 ```
 
+Apply database migrations:
+
+```bash
+uv run alembic upgrade head
+```
+
+Run the bot:
+
 ```bash
 uv run main.py
 ```
+
+
+## Reports
+
+After the bot has made some purchases, generate a performance report from the stored data:
+
+```bash
+uv run report.py <group> [--plot]
+```
+
+`<group>` is one of:
+
+- `purchase` — one row per purchase.
+- `month` — aggregated by month.
+- `bond` — aggregated by bond.
+
+Pass `--plot` to also render a chart.
