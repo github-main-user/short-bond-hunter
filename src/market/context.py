@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from t_tech.invest.async_services import AsyncServices
+from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.market.bid_order_registry import BidOrderRegistry
 from src.market.bond_catalog import BondCatalog

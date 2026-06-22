@@ -3,7 +3,8 @@ import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
-from t_tech.invest import AsyncClient, OperationType
+from t_tech.invest.grpc import AsyncClient  # type: ignore
+from t_tech.invest.grpc.schemas import OperationType
 
 from src.config import settings
 from src.market.api import fetch_operations

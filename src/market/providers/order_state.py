@@ -1,10 +1,10 @@
 import logging
 from collections.abc import AsyncGenerator
 
-from t_tech.invest import AsyncClient
-from t_tech.invest.schemas import (
-    OrderStateStreamOrderState,
+from t_tech.invest.grpc import AsyncClient  # type: ignore
+from t_tech.invest.grpc.schemas import (
     OrderStateStreamRequest,
+    OrderStateStreamResponse,
 )
 
 from src.config import settings
@@ -16,7 +16,7 @@ class OrderStateProvider:
     def __init__(self, account_id: str) -> None:
         self._account_id = account_id
 
-    async def stream(self) -> AsyncGenerator[OrderStateStreamOrderState]:
+    async def stream(self) -> AsyncGenerator[OrderStateStreamResponse.OrderState]:
         async with AsyncClient(settings.TINVEST_TOKEN) as client:
             request = OrderStateStreamRequest(accounts=[self._account_id])
             logger.info(

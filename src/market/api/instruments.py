@@ -1,8 +1,14 @@
 import logging
 from datetime import datetime, timezone
 
-from t_tech.invest import AioRequestError, Bond, InstrumentIdType
-from t_tech.invest.async_services import AsyncServices
+from t_tech.invest.exceptions import AioRequestError
+from t_tech.invest.grpc.schemas import (
+    Bond,
+    GetBondCouponsRequest,
+    InstrumentIdType,
+    InstrumentRequest,
+)
+from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.market.utils import to_float
 
@@ -20,7 +26,7 @@ async def fetch_coupons_sum(
         return 0.0
 
     coupon_resp = await client.instruments.get_bond_coupons(
-        figi=figi, from_=from_, to=to
+        request=GetBondCouponsRequest(figi=figi, from_=from_, to=to)
     )
     return sum(to_float(c.pay_one_bond) for c in coupon_resp.events)
 
@@ -33,8 +39,10 @@ async def fetch_raw_bonds(client: AsyncServices) -> list[Bond]:
 async def fetch_bond_by_figi(client: AsyncServices, figi: str) -> Bond | None:
     try:
         response = await client.instruments.bond_by(
-            id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
-            id=figi,
+            request=InstrumentRequest(
+                id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
+                id=figi,
+            )
         )
         return response.instrument
     except AioRequestError:

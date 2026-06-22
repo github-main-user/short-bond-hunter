@@ -1,6 +1,6 @@
 import logging
 
-from t_tech.invest import AioRequestError
+from t_tech.invest.exceptions import AioRequestError
 
 logger = logging.getLogger(__name__)
 
