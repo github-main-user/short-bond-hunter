@@ -1,6 +1,6 @@
 import logging
 
-from t_tech.invest.async_services import AsyncServices
+from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 logger = logging.getLogger(__name__)
 

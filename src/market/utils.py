@@ -1,4 +1,4 @@
-from t_tech.invest import MoneyValue, Quotation
+from t_tech.invest.grpc.schemas import MoneyValue, Quotation
 
 
 def to_float(money: MoneyValue | Quotation) -> float:

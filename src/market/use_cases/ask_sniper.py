@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
-from t_tech.invest import PortfolioPosition
+from t_tech.invest.grpc.schemas import PortfolioPosition
 
 from src.config import settings
 from src.market.api import (

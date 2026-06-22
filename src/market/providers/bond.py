@@ -3,16 +3,16 @@ import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
-from t_tech.invest import (
-    AsyncClient,
+from t_tech.invest.grpc import AsyncClient  # type: ignore
+from t_tech.invest.grpc.schemas import (
     Bond,
     MarketDataRequest,
     OrderBookInstrument,
+    RiskLevel,
     SubscribeOrderBookRequest,
     SubscriptionAction,
 )
-from t_tech.invest.async_services import AsyncServices
-from t_tech.invest.schemas import RiskLevel
+from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.config import settings
 from src.market.api import (

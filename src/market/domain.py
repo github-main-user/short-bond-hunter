@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Self
 
-from t_tech.invest import Bond, OrderBook
+from t_tech.invest.grpc.schemas import Bond, OrderBook
 
 from .utils import to_float
 

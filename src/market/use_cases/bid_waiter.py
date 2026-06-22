@@ -1,8 +1,10 @@
 import logging
 from datetime import datetime, timezone
 
-from t_tech.invest import OrderExecutionReportStatus
-from t_tech.invest.schemas import OrderStateStreamOrderState
+from t_tech.invest.grpc.schemas import (
+    OrderExecutionReportStatus,
+    OrderStateStreamResponse,
+)
 
 from src.config import settings
 from src.market.api import (
@@ -220,7 +222,7 @@ async def _record_fill(
 
 async def process_bid_order_state(
     ctx: MarketContext,
-    event: OrderStateStreamOrderState,
+    event: OrderStateStreamResponse.OrderState,
 ) -> None:
     existing_order = ctx.bid_registry.find_by_order_id(event.order_id)
     if existing_order is None:

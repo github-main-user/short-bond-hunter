@@ -1,8 +1,14 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from t_tech.invest import CandleInterval, OrderBook
-from t_tech.invest.async_services import AsyncServices
+from t_tech.invest.grpc.schemas import (
+    CandleInterval,
+    GetCandlesRequest,
+    GetLastPricesRequest,
+    GetOrderBookRequest,
+    OrderBook,
+)
+from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.market.utils import to_float
 
@@ -14,7 +20,9 @@ _TMON_FIGI = "TCS70A106DL2"
 async def fetch_orderbook(
     client: AsyncServices, figi: str, depth: int = 1
 ) -> OrderBook:
-    response = await client.market_data.get_order_book(figi=figi, depth=depth)
+    response = await client.market_data.get_order_book(
+        request=GetOrderBookRequest(figi=figi, depth=depth)
+    )
     return OrderBook(figi=figi, asks=response.asks, bids=response.bids)
 
 
@@ -29,7 +37,9 @@ async def fetch_tmon_etf_price_at(
     is_today = target_time.date() == now.date()
 
     if is_today:
-        response = await client.market_data.get_last_prices(figi=[_TMON_FIGI])
+        response = await client.market_data.get_last_prices(
+            request=GetLastPricesRequest(figi=[_TMON_FIGI])
+        )
         if not response.last_prices:
             logger.warning(f"Can't fetch TMON@ last price at {target_time}")
             return None
@@ -38,10 +48,12 @@ async def fetch_tmon_etf_price_at(
     day_start = target_time.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = day_start + timedelta(hours=23, minutes=59, seconds=59)
     response = await client.market_data.get_candles(
-        figi=_TMON_FIGI,
-        from_=day_start,
-        to=day_end,
-        interval=CandleInterval.CANDLE_INTERVAL_DAY,
+        request=GetCandlesRequest(
+            figi=_TMON_FIGI,
+            from_=day_start,
+            to=day_end,
+            interval=CandleInterval.CANDLE_INTERVAL_DAY,
+        )
     )
     if not response.candles:
         logger.warning(

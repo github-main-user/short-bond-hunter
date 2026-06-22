@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from t_tech.invest import AsyncClient
-from t_tech.invest.async_services import AsyncServices
+from t_tech.invest.grpc import AsyncClient  # type: ignore
+from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.config import settings
 from src.market.api import fetch_account_id, fetch_active_bid_orders
