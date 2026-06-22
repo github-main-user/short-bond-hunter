@@ -12,7 +12,7 @@ dependencies = [
     "pydantic-settings>=2.11.0",
     "requests>=2.32.5",
     "sqlalchemy>=2.0.48",
-    "t-tech-investments>=0.3.3",
+    "t-tech-investments>=1.49.2",
 ]
 
 [[tool.uv.index]]
