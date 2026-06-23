@@ -10,6 +10,7 @@ from src.market.api import (
     fetch_bond_positions,
     fetch_tmon_etf_price_at,
 )
+from src.market.bid_order_registry import BidOrderRegistry
 from src.market.context import MarketContext
 from src.market.domain import EnrichedBond
 from src.market.messages import compose_ask_snipe_notification
@@ -48,6 +49,7 @@ def _compute_purchase_quantity(
     bond: EnrichedBond,
     balance: float,
     existing_position: PortfolioPosition | None,
+    bid_registry: BidOrderRegistry,
 ) -> int:
     qty_by_purchase_cap = int(settings.ASK_MAX_SUM_PER_PURCHASE // bond.ask.real_price)
 
@@ -58,7 +60,11 @@ def _compute_purchase_quantity(
     else:
         current_value = 0.0
 
-    allowed_budget = settings.ASK_MAX_SUM_PER_BOND - current_value
+    waiter_reserved = sum(
+        bond.at(o.price_percent).real_price * o.quantity
+        for o in bid_registry.bids_for(bond.figi)
+    )
+    allowed_budget = settings.TOTAL_MAX_SUM_PER_BOND - current_value - waiter_reserved
 
     qty_by_shared_cap = 0
     if allowed_budget > 0:
@@ -99,7 +105,9 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     existing_bonds = await fetch_bond_positions(ctx.client, ctx.account_id)
     existing_position = existing_bonds.get(bond.figi)
 
-    quantity_to_buy = _compute_purchase_quantity(bond, balance, existing_position)
+    quantity_to_buy = _compute_purchase_quantity(
+        bond, balance, existing_position, ctx.bid_registry
+    )
 
     if quantity_to_buy <= 0:
         return
