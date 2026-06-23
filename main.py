@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 import asyncio
 import logging
+import os
 
 from src.logging import setup_logging
 from src.market import start_market_session
 
 
 def main() -> None:
+    os.environ.setdefault("SSL_TBANK_VERIFY", "true")
+
     setup_logging()
     logging.info("Starting market streaming session")
 
