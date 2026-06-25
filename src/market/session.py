@@ -6,16 +6,17 @@ from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.config import settings
 from src.market.api import fetch_account_id, fetch_active_bid_orders
-from src.market.context import MarketContext
-from src.market.domain import MaturityEventType
 from src.market.bid_order_registry import ActiveBidOrder, BidOrderRegistry
 from src.market.bond_catalog import BondCatalog
+from src.market.context import MarketContext
+from src.market.cooldown_registry import CooldownRegistry
+from src.market.domain import MaturityEventType
 from src.market.providers import BondProvider, MaturityProvider, OrderStateProvider
 from src.market.use_cases import (
     process_ask_sniper,
+    process_bid_order_state,
     process_bid_waiter,
     process_maturity,
-    process_bid_order_state,
     refresh_all_bids,
 )
 from src.market.utils import to_float
@@ -55,6 +56,7 @@ async def start_market_session() -> None:
     maturity_repo = MaturityRepository()
     bid_registry = BidOrderRegistry()
     catalog = BondCatalog()
+    cooldown_registry = CooldownRegistry()
 
     async with AsyncClient(settings.TINVEST_TOKEN) as client:
         account_id = await fetch_account_id(client)
@@ -66,6 +68,7 @@ async def start_market_session() -> None:
             account_id=account_id,
             bid_registry=bid_registry,
             catalog=catalog,
+            cooldown_registry=cooldown_registry,
             purchase_repo=purchase_repo,
             maturity_repo=maturity_repo,
         )
