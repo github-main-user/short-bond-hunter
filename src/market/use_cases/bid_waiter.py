@@ -196,6 +196,11 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     if our_order is None:
+        if ctx.cooldown_registry.on_cooldown(
+            PurchaseStrategy.BID_WAITER, bond.figi, settings.BID_COOLDOWN_SECONDS
+        ):
+            logger.debug(f"Skipped new bid for {bond.ticker}: on cooldown")
+            return
         await _place_or_replace_bid(ctx, bond, target_qty, target_price)
         return
 
@@ -236,6 +241,7 @@ async def _record_fill(
         expected_maturity_date=bond.maturity_date,
         strategy=PurchaseStrategy.BID_WAITER,
     )
+    ctx.cooldown_registry.mark(PurchaseStrategy.BID_WAITER, bond.figi)
     remaining = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     await notify(compose_bid_fill_notification(bond, view, lots_filled, remaining))
 

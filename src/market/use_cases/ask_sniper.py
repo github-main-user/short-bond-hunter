@@ -88,6 +88,11 @@ def _compute_purchase_quantity(
 
 
 async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
+    if ctx.cooldown_registry.on_cooldown(
+        PurchaseStrategy.ASK_SNIPER, bond.figi, settings.ASK_COOLDOWN_SECONDS
+    ):
+        return
+
     if not _is_eligible_for_snipe(bond):
         return
 
@@ -142,6 +147,7 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
         expected_maturity_date=bond.maturity_date,
         strategy=PurchaseStrategy.ASK_SNIPER,
     )
+    ctx.cooldown_registry.mark(PurchaseStrategy.ASK_SNIPER, bond.figi)
 
     remaining_balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     message = compose_ask_snipe_notification(
