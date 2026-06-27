@@ -1,4 +1,4 @@
-import logging
+import structlog
 from datetime import datetime, timezone
 
 from t_tech.invest.exceptions import AioRequestError
@@ -12,7 +12,7 @@ from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.market.utils import to_float
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 async def fetch_coupons_sum(
@@ -22,7 +22,13 @@ async def fetch_coupons_sum(
     to = maturity_date
 
     if to < from_:
-        logger.warning("Skipping coupons fetch - `to` can't be less than `from`")
+        log.warning(
+            "skipping_coupons_fetch",
+            reason="to_less_than_from",
+            figi=figi,
+            from_date=from_.isoformat(),
+            to_date=to.isoformat(),
+        )
         return 0.0
 
     coupon_resp = await client.instruments.get_bond_coupons(
@@ -46,5 +52,5 @@ async def fetch_bond_by_figi(client: AsyncServices, figi: str) -> Bond | None:
         )
         return response.instrument
     except AioRequestError:
-        logger.info(f"Got no bond by figi: {figi}")
+        log.info("bond_not_found_by_figi", figi=figi)
         return None

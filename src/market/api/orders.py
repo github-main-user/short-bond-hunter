@@ -1,7 +1,7 @@
-import logging
 import uuid
 from typing import TYPE_CHECKING
 
+import structlog
 from t_tech.invest.exceptions import AioRequestError
 from t_tech.invest.grpc.schemas import (
     CancelOrderRequest,
@@ -24,7 +24,7 @@ from src.market.utils import from_float, to_float
 if TYPE_CHECKING:
     from src.market.domain import EnrichedBond
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 _ACCEPTED_ORDER_STATUSES = {
@@ -57,15 +57,18 @@ async def buy_at_ask(
             )
         )
     except AioRequestError as e:
-        handle_order_error(e, f"Ask buy for {bond.ticker}")
+        handle_order_error(e, operation="ask_buy", figi=bond.figi, ticker=bond.ticker)
         return None
     if (
         response.execution_report_status
         != OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL
     ):
-        logger.warning(
-            f"Order for {bond.ticker} was not filled"
-            f" (status: {response.execution_report_status})"
+        log.warning(
+            "order_not_filled",
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            status=response.execution_report_status.name,
         )
         return None
     return to_float(response.total_order_amount) * bond.nominal / 100
@@ -92,12 +95,15 @@ async def place_bid_order(
             )
         )
     except AioRequestError as e:
-        handle_order_error(e, f"Bid for {bond.ticker}")
+        handle_order_error(e, operation="bid_place", figi=bond.figi, ticker=bond.ticker)
         return None
     if response.execution_report_status not in _ACCEPTED_ORDER_STATUSES:
-        logger.warning(
-            f"Bid for {bond.ticker} was not accepted"
-            f" (status: {response.execution_report_status})"
+        log.warning(
+            "bid_not_accepted",
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            status=response.execution_report_status.name,
         )
         return None
     return response
@@ -111,7 +117,6 @@ async def replace_bid_order(
     quantity: int,
     price_percent: float,
 ) -> PostOrderResponse | None:
-    context = f"Replace of bid {old_order_id} for {bond.ticker}"
     try:
         response = await client.orders.replace_order(
             request=ReplaceOrderRequest(
@@ -124,11 +129,22 @@ async def replace_bid_order(
             )
         )
     except AioRequestError as e:
-        handle_order_error(e, context)
+        handle_order_error(
+            e,
+            operation="bid_replace",
+            figi=bond.figi,
+            ticker=bond.ticker,
+            order_id=old_order_id,
+        )
         return None
     if response.execution_report_status not in _ACCEPTED_ORDER_STATUSES:
-        logger.warning(
-            f"{context} was not accepted (status: {response.execution_report_status})"
+        log.warning(
+            "replace_bid_not_accepted",
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            old_order_id=old_order_id,
+            status=response.execution_report_status.name,
         )
         return None
     return response

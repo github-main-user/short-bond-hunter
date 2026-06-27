@@ -1,10 +1,7 @@
-import logging
 from datetime import datetime, timezone
 
 from t_tech.invest.grpc.schemas import Operation, OperationsRequest, OperationState
 from t_tech.invest.grpc.utils.grpc_services import AsyncServices
-
-logger = logging.getLogger(__name__)
 
 
 async def fetch_operations(

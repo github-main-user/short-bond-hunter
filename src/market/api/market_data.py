@@ -1,4 +1,4 @@
-import logging
+import structlog
 from datetime import datetime, timedelta, timezone
 
 from t_tech.invest.grpc.schemas import (
@@ -12,7 +12,7 @@ from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.market.utils import to_float
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 _TMON_FIGI = "TCS70A106DL2"
 
@@ -41,7 +41,11 @@ async def fetch_tmon_etf_price_at(
             request=GetLastPricesRequest(figi=[_TMON_FIGI])
         )
         if not response.last_prices:
-            logger.warning(f"Can't fetch TMON@ last price at {target_time}")
+            log.warning(
+                "tmon_price_fetch_failed",
+                target_time=target_time.isoformat(),
+                reason="no_last_prices",
+            )
             return None
         return to_float(response.last_prices[0].price)
 
@@ -56,8 +60,10 @@ async def fetch_tmon_etf_price_at(
         )
     )
     if not response.candles:
-        logger.warning(
-            f"Can't fetch TMON@ price at {target_time}: no candles available"
+        log.warning(
+            "tmon_price_fetch_failed",
+            target_time=target_time.isoformat(),
+            reason="no_candles",
         )
         return None
     candle = response.candles[0]
