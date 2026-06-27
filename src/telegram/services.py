@@ -1,6 +1,5 @@
-import logging
-
 import aiohttp
+import structlog
 from aiohttp import ClientError
 
 from src.config import settings
@@ -8,7 +7,7 @@ from src.config import settings
 from .exceptions import TelegramNotConfiguredError
 from .utils import escape_markdown_v2_special_chars
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 async def _send_telegram_message(message: str):
@@ -31,8 +30,7 @@ async def _send_telegram_message(message: str):
 
 
 async def notify(message: str) -> None:
-    logger.info(message)
     try:
         await _send_telegram_message(message)
     except (TelegramNotConfiguredError, ClientError) as e:
-        logger.error(f"Failed to send telegram message: {e}")
+        log.error("telegram_message_failed", error=str(e))
