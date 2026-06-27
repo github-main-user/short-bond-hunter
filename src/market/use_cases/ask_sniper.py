@@ -23,7 +23,7 @@ log = structlog.get_logger(__name__)
 
 
 def _is_eligible_for_snipe(bond: EnrichedBond) -> bool:
-    if bond.ticker in settings.BLACK_LIST_TICKERS:
+    if bond.ticker in settings.BLACK_LISTED_TICKERS:
         log.debug(
             "ask_ineligible",
             name=bond.name,

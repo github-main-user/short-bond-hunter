@@ -184,7 +184,7 @@ async def _cancel_bid(
 
 
 async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
-    if bond.ticker in settings.BLACK_LIST_TICKERS:
+    if bond.ticker in settings.BLACK_LISTED_TICKERS:
         return
 
     existing_bids = ctx.bid_registry.bids_for(bond.figi)
