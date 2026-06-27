@@ -1,5 +1,4 @@
-import logging
-
+import structlog
 from t_tech.invest.grpc.schemas import (
     PortfolioPosition,
     PortfolioRequest,
@@ -9,7 +8,7 @@ from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.market.utils import to_float
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 async def fetch_bond_positions(
@@ -33,8 +32,6 @@ async def fetch_account_balance_rub(
     ).money
     money_rub = next((m for m in money if m.currency == "rub"), None)
     if money_rub is None:
-        logger.warning(
-            f"No money positions with currency RUB found for account {account_id}"
-        )
+        log.warning("no_rub_balance", account_id=account_id)
         return None
     return to_float(money_rub)

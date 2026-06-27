@@ -1,8 +1,7 @@
-import logging
-
+import structlog
 from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 _TBANK_TARIFF_COMMISSION = {
     "investor": 0.3,
@@ -23,6 +22,10 @@ async def fetch_user_commission(client: AsyncServices) -> float:
     response = await client.users.get_info()
 
     tariff_percent = _TBANK_TARIFF_COMMISSION[response.tariff]
-    logger.info(f"User's tariff: {response.tariff} ({tariff_percent}%)")
+    log.info(
+        "user_tariff_fetched",
+        tariff_name=response.tariff,
+        tariff_percent=tariff_percent,
+    )
 
     return tariff_percent
