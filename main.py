@@ -3,7 +3,7 @@ import asyncio
 import logging
 import os
 
-from src.logging import setup_logging
+from src.log_setup import setup_logging
 from src.market import start_market_session
 
 
