@@ -2,7 +2,7 @@
 import argparse
 import logging
 
-from src.logging import setup_logging
+from src.log_setup import setup_logging
 from src.stats import generate_report
 
 GROUPS = ("purchase", "month", "bond")
