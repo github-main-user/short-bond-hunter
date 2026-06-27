@@ -1,10 +1,7 @@
-import logging
 from datetime import datetime
 
 from .database import SessionLocal
 from .models import BondMaturity, BondPurchase, RiskLevel, PurchaseStrategy
-
-logger = logging.getLogger(__name__)
 
 
 class PurchaseRepository:
