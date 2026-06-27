@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     BID_MAX_SUM_PER_BOND: float
     ASK_COOLDOWN_SECONDS: float = 300
     BID_COOLDOWN_SECONDS: float = 300
-    BLACK_LIST_TICKERS: set[str]
+    BLACK_LISTED_TICKERS: set[str]
 
     BOND_REFRESH_INTERVAL_HOURS: int = 4
 
