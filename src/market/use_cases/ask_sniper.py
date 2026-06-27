@@ -1,5 +1,6 @@
-import logging
 from datetime import datetime, timezone
+
+import structlog
 
 from t_tech.invest.grpc.schemas import PortfolioPosition
 
@@ -18,12 +19,18 @@ from src.market.utils import to_float
 from src.stats.models import PurchaseStrategy
 from src.telegram import notify
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 def _is_eligible_for_snipe(bond: EnrichedBond) -> bool:
     if bond.ticker in settings.BLACK_LIST_TICKERS:
-        logger.debug(f"Ineligible bond {bond.ticker}: bond is in the blacklist")
+        log.debug(
+            "ask_ineligible",
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            reason="blacklisted",
+        )
         return False
 
     if not (
@@ -31,15 +38,27 @@ def _is_eligible_for_snipe(bond: EnrichedBond) -> bool:
         <= bond.ask.annual_yield
         <= settings.ASK_MAX_ANNUAL_YIELD
     ):
-        logger.debug(
-            f"Ineligible bond {bond.ticker}: annual yield "
-            f"({bond.ask.annual_yield:.2f}%) is not in the allowed range "
-            f"[{settings.ASK_MIN_ANNUAL_YIELD}%, {settings.ASK_MAX_ANNUAL_YIELD}%]"
+        log.debug(
+            "ask_ineligible",
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            reason="yield_out_of_range",
+            annual_yield=bond.ask.annual_yield,
+            ask_min_annual_yield=settings.ASK_MIN_ANNUAL_YIELD,
+            ask_max_annual_yield=settings.ASK_MAX_ANNUAL_YIELD,
         )
         return False
 
     if bond.ask.real_price <= 0:
-        logger.debug(f"Ineligible bond {bond.ticker}: ask real price is not positive")
+        log.debug(
+            "ask_ineligible",
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            reason="non_positive_ask_price",
+            ask_real_price=bond.ask.real_price,
+        )
         return False
 
     return True
@@ -79,10 +98,16 @@ def _compute_purchase_quantity(
         bond.ask_quantity,
     )
     if qty == 0:
-        logger.info(
-            f"Skipped {bond.ticker}: quantity is 0 "
-            f"(by_purchase_cap={qty_by_purchase_cap}, by_shared_cap={qty_by_shared_cap}, "
-            f"by_balance={qty_by_balance}, asks={bond.ask_quantity})"
+        log.info(
+            "ask_skipped",
+            name=bond.name,
+            figi=bond.figi,
+            ticker=bond.ticker,
+            reason="zero_quantity",
+            qty_by_purchase_cap=qty_by_purchase_cap,
+            qty_by_shared_cap=qty_by_shared_cap,
+            qty_by_balance=qty_by_balance,
+            ask_quantity=bond.ask_quantity,
         )
     return qty
 
@@ -97,10 +122,20 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     ask = bond.ask
-    logger.info(
-        f"Processing {bond.ticker} ({bond.days_to_maturity}d, {ask.annual_yield:.2f}%) | "
-        f"cost: {ask.current_price:.2f}₽ + {bond.aci_value:.2f}₽ + {ask.commission:.2f}₽ = {ask.real_price:.2f}₽ | "
-        f"return: {bond.nominal:.2f}₽ + {bond.coupons_sum:.2f}₽ = {bond.full_return:.2f}₽"
+    log.info(
+        "ask_evaluating",
+        name=bond.name,
+        figi=bond.figi,
+        ticker=bond.ticker,
+        days_to_maturity=bond.days_to_maturity,
+        annual_yield=ask.annual_yield,
+        current_price=ask.current_price,
+        aci_value=bond.aci_value,
+        commission=ask.commission,
+        real_price=ask.real_price,
+        nominal=bond.nominal,
+        coupons_sum=bond.coupons_sum,
+        full_return=bond.full_return,
     )
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
@@ -126,6 +161,16 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     # provided by response itself - because in response's commission is always 0,
     # broker itself calculates commission in separate operation
     total_buy_price = buy_price + (ask.commission * quantity_to_buy)
+    log.info(
+        "ask_purchased",
+        name=bond.name,
+        figi=bond.figi,
+        ticker=bond.ticker,
+        quantity=quantity_to_buy,
+        total_price=total_buy_price,
+        annual_yield=ask.annual_yield,
+    )
+
     real_price_per_lot = total_buy_price / quantity_to_buy
 
     tmon_price = await fetch_tmon_etf_price_at(

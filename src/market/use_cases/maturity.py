@@ -1,4 +1,4 @@
-import logging
+import structlog
 
 from src.market.api import fetch_bond_by_figi, fetch_tmon_etf_price_at
 from src.market.context import MarketContext
@@ -9,7 +9,7 @@ from src.market.messages import (
 )
 from src.telegram import notify
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 async def _process_repayment(ctx: MarketContext, event: MaturityEvent):
@@ -85,8 +85,9 @@ _EVENT_TYPE_TO_FUNC = {
 
 
 async def process_maturity(ctx: MarketContext, event: MaturityEvent):
-    logger.info(
-        f'Processing maturity event of type "{event.event_type.value}"'
-        f' for figi "{event.bond_figi}"'
+    log.info(
+        "maturity_event_received",
+        figi=event.bond_figi,
+        event_type=event.event_type.value,
     )
     await _EVENT_TYPE_TO_FUNC[event.event_type](ctx, event)
