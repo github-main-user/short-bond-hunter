@@ -1,5 +1,6 @@
-import logging
 from collections.abc import AsyncGenerator
+
+import structlog
 
 from t_tech.invest.grpc import AsyncClient  # type: ignore
 from t_tech.invest.grpc.schemas import (
@@ -9,7 +10,7 @@ from t_tech.invest.grpc.schemas import (
 
 from src.config import settings
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 class OrderStateProvider:
@@ -19,9 +20,7 @@ class OrderStateProvider:
     async def stream(self) -> AsyncGenerator[OrderStateStreamResponse.OrderState]:
         async with AsyncClient(settings.TINVEST_TOKEN) as client:
             request = OrderStateStreamRequest(accounts=[self._account_id])
-            logger.info(
-                f"Subscribed to order state stream for account {self._account_id}"
-            )
+            log.info("order_state_stream_subscribed")
             async for response in client.orders_stream.order_state_stream(
                 request=request
             ):

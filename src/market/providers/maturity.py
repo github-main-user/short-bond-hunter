@@ -1,7 +1,8 @@
 import asyncio
-import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+
+import structlog
 
 from t_tech.invest.grpc import AsyncClient  # type: ignore
 from t_tech.invest.grpc.schemas import OperationType
@@ -11,7 +12,7 @@ from src.market.api import fetch_operations
 from src.market.domain import MaturityEvent, MaturityEventType
 from src.market.utils import to_float
 
-logger = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 
 _OPERATION_TYPE_MAP = {
@@ -28,13 +29,13 @@ class MaturityProvider:
 
     async def stream(self) -> AsyncGenerator[MaturityEvent]:
         while True:
-            logger.debug("Starting hourly maturity fetch")
+            log.debug("maturity_fetch_started")
             async with AsyncClient(settings.TINVEST_TOKEN) as client:
                 since = datetime.now(tz=timezone.utc).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
                 operations = await fetch_operations(client, self._account_id, since)
-                logger.debug(f"Got {len(operations)} operations for today")
+                log.debug("operations_fetched", count=len(operations))
 
                 for operation in operations:
                     event_type = _OPERATION_TYPE_MAP.get(operation.operation_type)
