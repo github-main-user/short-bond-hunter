@@ -10,7 +10,6 @@ def setup_logging() -> None:
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
-        structlog.processors.TimeStamper(fmt="iso", utc=True),
     ]
     structlog.configure(
         processors=shared + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
