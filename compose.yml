@@ -32,11 +32,13 @@ services:
     image: grafana/grafana:13.1.0
     ports:
       - "3000:3000"
+    env_file: .env
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infra/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - loki
+      - postgres
 
   app:
     build: .
