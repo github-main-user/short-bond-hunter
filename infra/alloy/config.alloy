@@ -16,6 +16,11 @@ discovery.relabel "app_logs" {
     regex         = "/(.*)"
     target_label  = "container"
   }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_app"]
+    target_label  = "app"
+  }
 }
 
 loki.source.docker "app" {
