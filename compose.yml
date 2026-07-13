@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  loki:
+    image: grafana/loki:3.7.3
+    volumes:
+      - loki_data:/loki
+
+  alloy:
+    image: grafana/alloy:v1.16.3
+    volumes:
+      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/alloy/data
+    command: run /etc/alloy/config.alloy
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:13.1.0
+    ports:
+      - "3000:3000"
+    env_file: .env
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - loki
+      - postgres
+
+  app:
+    build: .
+    env_file: .env
+    command: >
+      sh -c ".venv/bin/alembic upgrade head &&
+             .venv/bin/python main.py"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      app: "short-bond-hunter"
+
+volumes:
+  postgres_data:
+  loki_data:
+  grafana_data:

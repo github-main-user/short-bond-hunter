@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
+from src.config import settings
 from src.stats.database import engine
 from src.stats.models import Base
 
@@ -29,7 +30,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = settings.DATABASE_URL
     context.configure(
         url=url,
         target_metadata=target_metadata,

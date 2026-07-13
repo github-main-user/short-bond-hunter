@@ -1,10 +1,7 @@
-import logging
 from datetime import datetime
 
 from .database import SessionLocal
 from .models import BondMaturity, BondPurchase, RiskLevel, PurchaseStrategy
-
-logger = logging.getLogger(__name__)
 
 
 class PurchaseRepository:
@@ -38,7 +35,7 @@ class PurchaseRepository:
                     commission_percent=commission_percent,
                     real_price=real_price,
                     coupons_sum=coupons_sum,
-                    risk_level=RiskLevel(risk_level),
+                    risk_level=RiskLevel.from_int(risk_level),
                     tmon_price_at_buy=tmon_price,
                     expected_maturity_date=expected_maturity_date,
                     strategy=strategy,

@@ -1,9 +1,5 @@
-import logging
-
 from . import calculators, plotters, printers
 from .repositories import MaturityRepository, PurchaseRepository
-
-logger = logging.getLogger(__name__)
 
 
 _REPORTS = {

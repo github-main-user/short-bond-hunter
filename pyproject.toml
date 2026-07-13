@@ -9,9 +9,11 @@ dependencies = [
     "alembic>=1.18.4",
     "matplotlib>=3.10.9",
     "pandas>=3.0.3",
+    "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.11.0",
     "requests>=2.32.5",
     "sqlalchemy>=2.0.48",
+    "structlog>=26.1.0",
     "t-tech-investments>=1.49.2",
 ]
 

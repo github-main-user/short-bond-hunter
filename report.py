@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 import argparse
-import logging
 
-from src.logging import setup_logging
+import structlog
+
+from src.log_setup import setup_logging
 from src.stats import generate_report
+
+log = structlog.get_logger(__name__)
 
 GROUPS = ("purchase", "month", "bond")
 
@@ -15,7 +18,7 @@ def main() -> None:
     args = parser.parse_args()
 
     setup_logging()
-    logging.info("Generating statistics...")
+    log.info("report_generating", group=args.group, plot=args.plot)
     generate_report(group=args.group, plot=args.plot)
 
 

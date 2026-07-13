@@ -44,7 +44,7 @@ The session runs three concurrent streams:
 
 Bonds are eligible only if they are RUB-denominated, non-perpetual, not qualified-investor
 only, mature within `DAYS_TO_MATURITY_MAX` days, and carry **LOW** or **MEDIUM** risk.
-You can also blacklist specific tickers via `BLACK_LIST_TICKERS`.
+You can also blacklist specific tickers via `BLACK_LISTED_TICKERS`.
 
 Every purchase (tagged by strategy) and every maturity payout is written to a SQLite
 database, along with the `TMON` ETF price at the time, so performance can later be compared
@@ -79,7 +79,7 @@ cp .env.example .env
 - `ASK_MAX_SUM_PER_BOND`: Maximum total RUB held per ticker by the ask sniper (shared cap).
 - `ASK_MAX_SUM_PER_PURCHASE`: Maximum RUB per single ask-sniper purchase.
 - `BID_MAX_SUM_PER_BOND`: Maximum total RUB per ticker held by the bid waiter.
-- `BLACK_LIST_TICKERS`: JSON array of tickers to exclude (e.g. `'["RU000A105JN7", "RU000A10A3R1"]'`).
+- `BLACK_LISTED_TICKERS`: JSON array of tickers to exclude (e.g. `'["RU000A105JN7", "RU000A10A3R1"]'`).
 - `BOND_REFRESH_INTERVAL_HOURS`: How often to re-fetch the bond list (default `4`).
 
 

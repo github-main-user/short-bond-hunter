@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None
 
+    POSTGRES_HOST: str = "postgres"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_DB: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+
+    LOG_LEVEL: str = "INFO"
+
     DAYS_TO_MATURITY_MAX: int
     ASK_MIN_ANNUAL_YIELD: float
     ASK_MAX_ANNUAL_YIELD: float
@@ -21,13 +29,16 @@ class Settings(BaseSettings):
     BID_MAX_SUM_PER_BOND: float
     ASK_COOLDOWN_SECONDS: float = 300
     BID_COOLDOWN_SECONDS: float = 300
-    BLACK_LIST_TICKERS: set[str]
+    BLACK_LISTED_TICKERS: set[str]
 
     BOND_REFRESH_INTERVAL_HOURS: int = 4
 
     @property
     def DATABASE_URL(self) -> str:
-        return f"sqlite:///{BASE_DIR}/stats.db"
+        return (
+            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
     @property
     def BOND_REFRESH_INTERVAL_SECONDS(self) -> int:
