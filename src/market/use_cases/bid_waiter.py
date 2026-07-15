@@ -198,11 +198,11 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         )
     our_order = existing_bids[0] if existing_bids else None
 
-    target_price = _decide_target_price_percent(bond, our_order)
-    if target_price is None:
+    target_price_percent = _decide_target_price_percent(bond, our_order)
+    if target_price_percent is None:
         return
 
-    target_view = bond.at(target_price)
+    target_view = bond.at(target_price_percent)
 
     if not (
         settings.BID_MIN_ANNUAL_YIELD
@@ -272,10 +272,13 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
                 ticker=bond.ticker,
             )
             return
-        await _place_or_replace_bid(ctx, bond, target_qty, target_price)
+        await _place_or_replace_bid(ctx, bond, target_qty, target_price_percent)
         return
 
-    if our_order.price_percent == target_price and our_order.quantity == target_qty:
+    if (
+        our_order.price_percent == target_price_percent
+        and our_order.quantity == target_qty
+    ):
         log.debug(
             "bid_already_at_target",
             name=bond.name,
@@ -286,7 +289,9 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         )
         return
 
-    await _place_or_replace_bid(ctx, bond, target_qty, target_price, old=our_order)
+    await _place_or_replace_bid(
+        ctx, bond, target_qty, target_price_percent, old=our_order
+    )
 
 
 async def _record_fill(
