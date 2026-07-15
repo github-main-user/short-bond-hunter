@@ -29,16 +29,26 @@ def _compose_purchase_notification(
 ) -> str:
     cost_without_commission = view.current_price + bond.aci_value
     benefit_per_day = view.benefit / bond.days_to_maturity
+    cost_pb_line = (
+        f"Cost PB: {cost_without_commission:.2f}₽ + {view.commission:.2f}₽ = {view.real_price:.2f}₽\n"
+        if qty > 1
+        else ""
+    )
+    benefit_pb_line = (
+        f"Benefit PB: {view.benefit:.2f}₽ ({benefit_per_day:.2f}₽ per day)\n"
+        if qty > 1
+        else ""
+    )
     return (
         f"{header}\n"
         f"Ticker: `{bond.ticker}`\n"
         f'Name: "{bond.name}"\n'
         f"{qty_line}\n"
         f"Cost: {cost_without_commission * qty:.2f}₽ + {view.commission * qty:.2f}₽ = {view.real_price * qty:.2f}₽\n"
-        f"Cost PB: {cost_without_commission:.2f}₽ + {view.commission:.2f}₽ = {view.real_price:.2f}₽\n"
+        f"{cost_pb_line}"
         f"Maturity: {bond.nominal * qty:.2f}₽ + {bond.coupons_sum * qty:.2f}₽ = {bond.full_return * qty:.2f}₽\n"
         f"Benefit: {view.benefit * qty:.2f}₽ ({benefit_per_day * qty:.2f}₽ per day)\n"
-        f"Benefit PB: {view.benefit:.2f}₽ ({benefit_per_day:.2f}₽ per day)\n"
+        f"{benefit_pb_line}"
         f"{f'Remaining balance: {remaining_balance:.2f}₽' if remaining_balance is not None else ''}"
     )
 
