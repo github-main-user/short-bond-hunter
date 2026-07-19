@@ -235,6 +235,8 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
+    if balance.available is None:
+        return
 
     existing_positions = await fetch_bond_positions(ctx.client, ctx.account_id)
     existing_position = existing_positions.get(bond.figi)
@@ -333,6 +335,7 @@ async def _record_fill(
             view,
             lots_filled,
             remaining.available,
+            remaining.reserved,
         )
     )
 

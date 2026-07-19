@@ -12,8 +12,8 @@ from src.market.utils import to_float
 
 @dataclass(frozen=True)
 class AccountBalance:
-    available: float
-    reserved: float
+    available: float | None
+    reserved: float | None
 
 
 async def fetch_bond_positions(
@@ -34,10 +34,7 @@ async def fetch_account_balance_rub(
         request=PositionsRequest(account_id=account_id)
     )
 
-    money_rub = next((m for m in positions.money if m.currency == "rub"), None)
-    blocked_rub = next((m for m in positions.blocked if m.currency == "rub"), None)
+    available = {money.currency: to_float(money) for money in positions.money}
+    reserved = {money.currency: to_float(money) for money in positions.blocked}
 
-    return AccountBalance(
-        available=to_float(money_rub) if money_rub is not None else 0.0,
-        reserved=to_float(blocked_rub) if blocked_rub is not None else 0.0,
-    )
+    return AccountBalance(available=available.get("rub"), reserved=reserved.get("rub"))

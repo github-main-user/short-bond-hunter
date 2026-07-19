@@ -200,5 +200,6 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
         quantity_to_buy,
         total_buy_price,
         remaining_balance.available,
+        remaining_balance.reserved,
     )
     await notify(message)

@@ -26,6 +26,7 @@ def _compose_purchase_notification(
     header: str,
     qty_line: str,
     remaining_balance: float | None,
+    reserved_balance: float | None,
 ) -> str:
     cost_without_commission = view.current_price + bond.aci_value
     benefit_per_day = view.benefit / bond.days_to_maturity
@@ -39,6 +40,14 @@ def _compose_purchase_notification(
         if qty > 1
         else ""
     )
+    balance_lines = "\n".join(
+        f"{label}: {value:.2f}₽"
+        for label, value in (
+            ("Remaining balance", remaining_balance),
+            ("Reserved balance", reserved_balance),
+        )
+        if value is not None
+    )
     return (
         f"{header}\n"
         f"Ticker: `{bond.ticker}`\n"
@@ -49,7 +58,7 @@ def _compose_purchase_notification(
         f"Maturity: {bond.nominal * qty:.2f}₽ + {bond.coupons_sum * qty:.2f}₽ = {bond.full_return * qty:.2f}₽\n"
         f"Benefit: {view.benefit * qty:.2f}₽ ({benefit_per_day * qty:.2f}₽ per day)\n"
         f"{benefit_pb_line}"
-        f"{f'Remaining balance: {remaining_balance:.2f}₽' if remaining_balance is not None else ''}"
+        f"{balance_lines}"
     )
 
 
@@ -58,6 +67,7 @@ def compose_ask_snipe_notification(
     buy_quantity: int,
     buy_price: float,
     remaining_balance: float | None,
+    reserved_balance: float | None,
 ) -> str:
     ask = bond.ask
     return _compose_purchase_notification(
@@ -67,6 +77,7 @@ def compose_ask_snipe_notification(
         header=f"ASK: {buy_price:.2f}₽, {ask.annual_yield:.2f}%, {bond.days_to_maturity}d",
         qty_line=f"Quantity: {buy_quantity} / {bond.ask_quantity}",
         remaining_balance=remaining_balance,
+        reserved_balance=reserved_balance,
     )
 
 
@@ -75,6 +86,7 @@ def compose_bid_fill_notification(
     view: PriceView,
     lots_filled: int,
     remaining_balance: float | None,
+    reserved_balance: float | None,
 ) -> str:
     return _compose_purchase_notification(
         bond,
@@ -86,4 +98,5 @@ def compose_bid_fill_notification(
         ),
         qty_line=f"Quantity: {lots_filled}",
         remaining_balance=remaining_balance,
+        reserved_balance=reserved_balance,
     )
