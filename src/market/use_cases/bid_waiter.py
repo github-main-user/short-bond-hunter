@@ -112,6 +112,17 @@ async def _place_or_replace_bid(
     price_percent: float,
     old: ActiveBidOrder | None = None,
 ) -> None:
+    async with ctx.bid_registry_lock:
+        await _place_or_replace_bid_unlocked(ctx, bond, qty, price_percent, old)
+
+
+async def _place_or_replace_bid_unlocked(
+    ctx: MarketContext,
+    bond: EnrichedBond,
+    qty: int,
+    price_percent: float,
+    old: ActiveBidOrder | None = None,
+) -> None:
     if old is None:
         response = await place_bid_order(
             ctx.client, ctx.account_id, bond, qty, price_percent
@@ -170,6 +181,13 @@ async def _place_or_replace_bid(
 
 
 async def _cancel_bid(
+    ctx: MarketContext, bond: EnrichedBond, order: ActiveBidOrder
+) -> None:
+    async with ctx.bid_registry_lock:
+        await _cancel_bid_unlocked(ctx, bond, order)
+
+
+async def _cancel_bid_unlocked(
     ctx: MarketContext, bond: EnrichedBond, order: ActiveBidOrder
 ) -> None:
     await cancel_bid_order(ctx.client, ctx.account_id, bond, order.order_id)
@@ -341,6 +359,14 @@ async def _record_fill(
 
 
 async def process_bid_order_state(
+    ctx: MarketContext,
+    event: OrderStateStreamResponse.OrderState,
+) -> None:
+    async with ctx.bid_registry_lock:
+        await _process_bid_order_state_unlocked(ctx, event)
+
+
+async def _process_bid_order_state_unlocked(
     ctx: MarketContext,
     event: OrderStateStreamResponse.OrderState,
 ) -> None:

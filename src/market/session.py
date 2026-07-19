@@ -44,18 +44,22 @@ async def _with_retry(fn, *args, on_retry=None, **kwargs) -> None:
 
 
 async def _sync_bid_registry_from_broker(
-    client: AsyncServices, account_id: str, bid_registry: BidOrderRegistry
+    client: AsyncServices,
+    account_id: str,
+    bid_registry: BidOrderRegistry,
+    bid_registry_lock: asyncio.Lock,
 ) -> None:
-    existing = await fetch_active_bid_orders(client, account_id)
-    bid_registry.replace_all(
-        ActiveBidOrder(
-            order_id=order.order_id,
-            figi=order.figi,
-            price_percent=to_float(order.initial_security_price),
-            quantity=order.lots_requested - order.lots_executed,
+    async with bid_registry_lock:
+        existing = await fetch_active_bid_orders(client, account_id)
+        bid_registry.replace_all(
+            ActiveBidOrder(
+                order_id=order.order_id,
+                figi=order.figi,
+                price_percent=to_float(order.initial_security_price),
+                quantity=order.lots_requested - order.lots_executed,
+            )
+            for order in existing
         )
-        for order in existing
-    )
     log.info("bid_registry_synced", count=len(existing))
 
 
@@ -63,18 +67,22 @@ async def start_market_session() -> None:
     purchase_repo = PurchaseRepository()
     maturity_repo = MaturityRepository()
     bid_registry = BidOrderRegistry()
+    bid_registry_lock = asyncio.Lock()
     catalog = BondCatalog()
     cooldown_registry = CooldownRegistry()
 
     async with AsyncClient(settings.TINVEST_TOKEN) as client:
         account_id = await fetch_account_id(client)
 
-        await _sync_bid_registry_from_broker(client, account_id, bid_registry)
+        await _sync_bid_registry_from_broker(
+            client, account_id, bid_registry, bid_registry_lock
+        )
 
         ctx = MarketContext(
             client=client,
             account_id=account_id,
             bid_registry=bid_registry,
+            bid_registry_lock=bid_registry_lock,
             catalog=catalog,
             cooldown_registry=cooldown_registry,
             purchase_repo=purchase_repo,
@@ -130,7 +138,9 @@ async def start_market_session() -> None:
                     )
 
         async def resync_bid_registry():
-            await _sync_bid_registry_from_broker(client, account_id, bid_registry)
+            await _sync_bid_registry_from_broker(
+                client, account_id, bid_registry, bid_registry_lock
+            )
 
         await asyncio.gather(
             _with_retry(bond_loop),

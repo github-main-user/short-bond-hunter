@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 
 from t_tech.invest.grpc.utils.grpc_services import AsyncServices
@@ -13,6 +14,7 @@ class MarketContext:
     client: AsyncServices
     account_id: str
     bid_registry: BidOrderRegistry
+    bid_registry_lock: asyncio.Lock
     catalog: BondCatalog
     cooldown_registry: CooldownRegistry
     purchase_repo: PurchaseRepository
