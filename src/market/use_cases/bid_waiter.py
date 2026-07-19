@@ -172,7 +172,7 @@ async def _place_or_replace_bid(
 async def _cancel_bid(
     ctx: MarketContext, bond: EnrichedBond, order: ActiveBidOrder
 ) -> None:
-    await cancel_bid_order(ctx.client, ctx.account_id, order.order_id)
+    await cancel_bid_order(ctx.client, ctx.account_id, bond, order.order_id)
     ctx.bid_registry.remove(bond.figi, order.order_id)
     log.info(
         "bid_cancelled",

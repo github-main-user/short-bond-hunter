@@ -151,14 +151,23 @@ async def replace_bid_order(
 
 
 async def cancel_bid_order(
-    client: AsyncServices, account_id: str, order_id: str
+    client: AsyncServices,
+    account_id: str,
+    bond: "EnrichedBond",
+    order_id: str,
 ) -> None:
     try:
         await client.orders.cancel_order(
             request=CancelOrderRequest(account_id=account_id, order_id=order_id)
         )
     except AioRequestError as e:
-        handle_order_error(e, f"Cancel of bid {order_id}")
+        handle_order_error(
+            e,
+            operation="bid_cancel",
+            figi=bond.figi,
+            ticker=bond.ticker,
+            order_id=order_id,
+        )
 
 
 async def fetch_active_bid_orders(
