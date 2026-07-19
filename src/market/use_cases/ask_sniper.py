@@ -139,14 +139,14 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
     )
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
-    if not balance:
+    if not balance.available:
         return
 
     existing_bonds = await fetch_bond_positions(ctx.client, ctx.account_id)
     existing_position = existing_bonds.get(bond.figi)
 
     quantity_to_buy = _compute_purchase_quantity(
-        bond, balance, existing_position, ctx.bid_registry
+        bond, balance.available, existing_position, ctx.bid_registry
     )
 
     if quantity_to_buy <= 0:
@@ -196,6 +196,9 @@ async def process_ask_sniper(ctx: MarketContext, bond: EnrichedBond) -> None:
 
     remaining_balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
     message = compose_ask_snipe_notification(
-        bond, quantity_to_buy, total_buy_price, remaining_balance
+        bond,
+        quantity_to_buy,
+        total_buy_price,
+        remaining_balance.available,
     )
     await notify(message)

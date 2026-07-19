@@ -235,8 +235,6 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     balance = await fetch_account_balance_rub(ctx.client, ctx.account_id)
-    if balance is None:
-        return
 
     existing_positions = await fetch_bond_positions(ctx.client, ctx.account_id)
     existing_position = existing_positions.get(bond.figi)
@@ -245,7 +243,7 @@ async def process_bid_waiter(ctx: MarketContext, bond: EnrichedBond) -> None:
         return
 
     target_qty = _compute_bid_quantity(
-        bond, target_view.real_price, balance, existing_position, ctx
+        bond, target_view.real_price, balance.available, existing_position, ctx
     )
 
     if target_qty == 0:
@@ -329,7 +327,14 @@ async def _record_fill(
     )
     ctx.cooldown_registry.mark(PurchaseStrategy.BID_WAITER, bond.figi)
     remaining = await fetch_account_balance_rub(ctx.client, ctx.account_id)
-    await notify(compose_bid_fill_notification(bond, view, lots_filled, remaining))
+    await notify(
+        compose_bid_fill_notification(
+            bond,
+            view,
+            lots_filled,
+            remaining.available,
+        )
+    )
 
 
 async def process_bid_order_state(

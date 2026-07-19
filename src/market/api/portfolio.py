@@ -1,4 +1,5 @@
-import structlog
+from dataclasses import dataclass
+
 from t_tech.invest.grpc.schemas import (
     PortfolioPosition,
     PortfolioRequest,
@@ -8,7 +9,11 @@ from t_tech.invest.grpc.utils.grpc_services import AsyncServices
 
 from src.market.utils import to_float
 
-log = structlog.get_logger(__name__)
+
+@dataclass(frozen=True)
+class AccountBalance:
+    available: float
+    reserved: float
 
 
 async def fetch_bond_positions(
@@ -24,14 +29,15 @@ async def fetch_bond_positions(
 
 async def fetch_account_balance_rub(
     client: AsyncServices, account_id: str
-) -> float | None:
-    money = (
-        await client.operations.get_positions(
-            request=PositionsRequest(account_id=account_id)
-        )
-    ).money
-    money_rub = next((m for m in money if m.currency == "rub"), None)
-    if money_rub is None:
-        log.warning("no_rub_balance", account_id=account_id)
-        return None
-    return to_float(money_rub)
+) -> AccountBalance:
+    positions = await client.operations.get_positions(
+        request=PositionsRequest(account_id=account_id)
+    )
+
+    money_rub = next((m for m in positions.money if m.currency == "rub"), None)
+    blocked_rub = next((m for m in positions.blocked if m.currency == "rub"), None)
+
+    return AccountBalance(
+        available=to_float(money_rub) if money_rub is not None else 0.0,
+        reserved=to_float(blocked_rub) if blocked_rub is not None else 0.0,
+    )
