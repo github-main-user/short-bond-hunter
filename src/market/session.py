@@ -43,15 +43,15 @@ async def _sync_bid_registry_from_broker(
     client: AsyncServices, account_id: str, bid_registry: BidOrderRegistry
 ) -> None:
     existing = await fetch_active_bid_orders(client, account_id)
-    for order in existing:
-        bid_registry.add(
-            ActiveBidOrder(
-                order_id=order.order_id,
-                figi=order.figi,
-                price_percent=to_float(order.initial_security_price),
-                quantity=order.lots_requested - order.lots_executed,
-            )
+    bid_registry.replace_all(
+        ActiveBidOrder(
+            order_id=order.order_id,
+            figi=order.figi,
+            price_percent=to_float(order.initial_security_price),
+            quantity=order.lots_requested - order.lots_executed,
         )
+        for order in existing
+    )
     log.info("bid_registry_synced", count=len(existing))
 
 

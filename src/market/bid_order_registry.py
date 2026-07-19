@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 
@@ -15,6 +16,11 @@ class BidOrderRegistry:
 
     def add(self, order: ActiveBidOrder) -> None:
         self._by_figi.setdefault(order.figi, {})[order.order_id] = order
+
+    def replace_all(self, orders: Iterable[ActiveBidOrder]) -> None:
+        self._by_figi = {}
+        for order in orders:
+            self.add(order)
 
     def remove(self, figi: str, order_id: str) -> None:
         bucket = self._by_figi.get(figi)
