@@ -25,9 +25,12 @@ from src.stats import MaturityRepository, PurchaseRepository
 log = structlog.get_logger(__name__)
 
 
-async def _with_retry(fn, *args, **kwargs) -> None:
+async def _with_retry(fn, *args, on_retry=None, **kwargs) -> None:
+    retrying = False
     while True:
         try:
+            if retrying and on_retry is not None:
+                await on_retry()
             await fn(*args, **kwargs)
         except Exception:
             log.exception(
@@ -37,6 +40,7 @@ async def _with_retry(fn, *args, **kwargs) -> None:
                 will_retry_in_seconds=300,
             )
             await asyncio.sleep(300)
+        retrying = True
 
 
 async def _sync_bid_registry_from_broker(
@@ -125,8 +129,11 @@ async def start_market_session() -> None:
                         "processing_failed", kind="order_state", order_id=event.order_id
                     )
 
+        async def resync_bid_registry():
+            await _sync_bid_registry_from_broker(client, account_id, bid_registry)
+
         await asyncio.gather(
             _with_retry(bond_loop),
             _with_retry(maturity_loop),
-            _with_retry(order_state_loop),
+            _with_retry(order_state_loop, on_retry=resync_bid_registry),
         )
