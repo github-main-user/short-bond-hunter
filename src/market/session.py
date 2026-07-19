@@ -142,8 +142,14 @@ async def start_market_session() -> None:
                 client, account_id, bid_registry, bid_registry_lock
             )
 
+        async def bid_registry_sync_loop():
+            while True:
+                await asyncio.sleep(settings.BID_REGISTRY_SYNC_INTERVAL_SECONDS)
+                await resync_bid_registry()
+
         await asyncio.gather(
             _with_retry(bond_loop),
             _with_retry(maturity_loop),
             _with_retry(order_state_loop, on_retry=resync_bid_registry),
+            _with_retry(bid_registry_sync_loop),
         )

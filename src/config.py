@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     BLACK_LISTED_TICKERS: set[str]
 
     BOND_REFRESH_INTERVAL_HOURS: int = 4
+    BID_REGISTRY_SYNC_INTERVAL_SECONDS: int = 1800
 
     @property
     def DATABASE_URL(self) -> str:

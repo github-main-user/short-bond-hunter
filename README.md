@@ -81,6 +81,7 @@ cp .env.example .env
 - `BID_MAX_SUM_PER_BOND`: Maximum total RUB per ticker held by the bid waiter.
 - `BLACK_LISTED_TICKERS`: JSON array of tickers to exclude (e.g. `'["RU000A105JN7", "RU000A10A3R1"]'`).
 - `BOND_REFRESH_INTERVAL_HOURS`: How often to re-fetch the bond list (default `4`).
+- `BID_REGISTRY_SYNC_INTERVAL_SECONDS`: How often to reconcile active bids with the broker (default `1800`).
 
 
 ## Installation & Start
